@@ -6,8 +6,8 @@ class PiCam:
     def __init__(self):
         self.picam2 = Picamera2()
         video_config = self.picam2.create_video_configuration(
-            main={"size": (1920, 1080)},
-            lores={"size": (1920, 1080)}
+            main={'size': (1920, 1080)},
+            lores={'size': (1920, 1080)}
         )
         self.picam2.configure(video_config)
         self.picam2.start()
