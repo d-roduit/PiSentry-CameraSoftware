@@ -1,54 +1,74 @@
 import cv2
 import numpy as np
-from typing import Optional, Any, Iterator, Generator
+from typing import Optional, Any, Iterator, Generator, Union
+from detection_typing import BoundingBox, Frame, Point
 
 class MotionDetector:
-    def __init__(self, delta_threshold: float = 9, min_area_for_motion: float = 1000, min_frames_for_motion: int = 20) -> None:
+    def __init__(self) -> None:
         cv2.startWindowThread()
-        self.configuration: dict[str, Any] = {
-            'delta_threshold': delta_threshold,
-            'min_area_for_motion': min_area_for_motion,
-            'min_frames_for_motion': min_frames_for_motion,
+        self._configuration: dict[str, Any] = {
+            'delta_threshold': 9,
+            'min_area_for_motion': 1000,
+            'min_frames_for_motion': 20,
         }
-        self.average_frame: Optional[np.ndarray] = None
-        self.nb_consecutive_frames_with_motion_detected: int = 0
+        self.average_frame: Optional[Frame] = None
+        self._nb_consecutive_frames_with_motion_detected: int = 0
 
-    def detect(self, frame: np.ndarray) -> Optional[tuple]:
-        # if we pass no frame, immediately return None
+    def configure_detection(
+        self,
+        delta_threshold: float = None,
+        min_area_for_motion: float = None,
+        min_frames_for_motion: int = None,
+    ) -> None:
+        if delta_threshold is not None:
+            if delta_threshold < 0:
+                raise ValueError('The delta threshold cannot be negative')
+            self._configuration['delta_threshold'] = delta_threshold
+
+        if min_area_for_motion is not None:
+            if min_area_for_motion < 0:
+                raise ValueError('The minimum area for motion cannot be negative')
+            self._configuration['min_area_for_motion'] = min_area_for_motion
+
+        if min_frames_for_motion is not None:
+            if min_frames_for_motion < 1:
+                raise ValueError('The minimum number of frames for motion to be considered detected cannot be less than 1')
+            self._configuration['min_frames_for_motion'] = min_frames_for_motion
+
+
+    def detect(self, frame: Frame, detection_areas: Union[list[BoundingBox], tuple[BoundingBox, ...]] = tuple()) -> tuple:
+        # if we pass no frame, immediately return
         if frame is None:
             print('returning cause frame is None')
-            self.nb_consecutive_frames_with_motion_detected = 0
-            return None
+            self._nb_consecutive_frames_with_motion_detected = 0
+            return tuple()
 
         # convert the frame to grayscale and blur it
-        gray_frame: np.ndarray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-        blured_frame: np.ndarray = cv2.GaussianBlur(src=gray_frame, ksize=(9, 9), sigmaX=0)
+        gray_frame: Frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+        blured_frame: Frame = cv2.GaussianBlur(src=gray_frame, ksize=(9, 9), sigmaX=0)
 
         # if the average frame is None, initialize it
         if self.average_frame is None:
             self.average_frame = blured_frame.copy().astype("float")
-            self.nb_consecutive_frames_with_motion_detected = 0
+            self._nb_consecutive_frames_with_motion_detected = 0
             print('returning cause average_frame is None')
-            return None
+            return tuple()
 
         # accumulate the weighted average between the current frame and previous frames,
         # then compute the difference between the current frame and running average
         cv2.accumulateWeighted(src=blured_frame, dst=self.average_frame, alpha=0.5)
-        frame_delta: np.ndarray = cv2.absdiff(blured_frame, cv2.convertScaleAbs(self.average_frame))
+        frame_delta: Frame = cv2.absdiff(blured_frame, cv2.convertScaleAbs(self.average_frame))
 
         # threshold the delta image with binary threshold, meaning making pixels either black or white
         # black pixels represent what didn't move, white pixels what did move
-        _, thresholded_frame = cv2.threshold(src=frame_delta, thresh=self.configuration["delta_threshold"], maxval=255, type=cv2.THRESH_BINARY)
+        _, thresholded_frame = cv2.threshold(src=frame_delta, thresh=self._configuration["delta_threshold"], maxval=255, type=cv2.THRESH_BINARY)
 
         # dilate the thresholded image to fill in holes
-        dilated_frame: np.ndarray = cv2.dilate(src=thresholded_frame, kernel=np.ones((5, 5)), iterations=2)
+        dilated_frame: Frame = cv2.dilate(src=thresholded_frame, kernel=np.ones((5, 5)), iterations=2)
 
 
         cv2.namedWindow("output2", cv2.WINDOW_NORMAL)
         cv2.imshow('output2', dilated_frame)
-
-        # print('moyenne:')
-        # print(total_time / nb_frames)
 
         # Press Q on keyboard to  exit
         cv2.waitKey(25)
@@ -62,24 +82,35 @@ class MotionDetector:
         # no contours were detected
         if len(movement_contours) == 0:
             print('------------------------- AUCUN MOUVEMENT CONTOURS -------------------------')
-            self.nb_consecutive_frames_with_motion_detected = 0
+            self._nb_consecutive_frames_with_motion_detected = 0
             print('returning cause len(movement_contours) == 0')
-            return None
+            return tuple()
 
-        # 1. is there movement in detection area ? -> look if the center point of the bounding box is in the detection area
+        # 1. is there movement in detection areas ? -> look if the center point of the bounding box is in any detection areas
 
-        movement_bounding_boxes: list[tuple[int, int, int, int]] = list(map(lambda contour: cv2.boundingRect(contour), movement_contours))
+        movement_bounding_boxes: list[BoundingBox] = list(map(lambda contour: cv2.boundingRect(contour), movement_contours))
 
-        motions_in_detection_area: list[tuple] = list(zip(*((bounding_box, contour) for bounding_box, contour in zip(movement_bounding_boxes, movement_contours) if bounding_box[1] + bounding_box[3] // 2 in range(0, 1080))))
+        movement_bounding_boxes_in_detection_area: list[BoundingBox] = []
+        movement_contours_in_detection_area: list[np.ndarray] = []
 
-        is_motion_detected_in_detection_area: bool = len(motions_in_detection_area) > 0
+        detection_areas = ((0, 0, len(frame[0]), len(frame)),) if len(detection_areas) == 0 else detection_areas
+
+        for movement_bounding_box, movement_contour in zip(movement_bounding_boxes, movement_contours):
+            for detection_area in detection_areas:
+                if self._bounding_box_contains_point(
+                    bounding_box = detection_area,
+                    point = self._bounding_box_center(movement_bounding_box)
+                ):
+                    movement_bounding_boxes_in_detection_area.append(movement_bounding_box)
+                    movement_contours_in_detection_area.append(movement_contour)
+                    break
+
+        is_motion_detected_in_detection_area: bool = len(movement_bounding_boxes_in_detection_area) > 0
 
         if not is_motion_detected_in_detection_area:
-            self.nb_consecutive_frames_with_motion_detected = 0
+            self._nb_consecutive_frames_with_motion_detected = 0
             print('returning cause is_motion_detected_in_detection_area is False')
-            return None
-
-        movement_bounding_boxes_in_detection_area, movement_contours_in_detection_area = motions_in_detection_area
+            return tuple()
 
         if len(movement_bounding_boxes_in_detection_area) == 0:
             print('movement_bounding_boxes_in_detection_area LEN IS 0 ------------------------ /////////////////////////////')
@@ -87,25 +118,65 @@ class MotionDetector:
         # 2. is movement big enough (e.g. we don't want to capture tiny flowers moving) ?
 
         bounding_boxes_and_contours_iterator: Iterator = zip(movement_bounding_boxes_in_detection_area, movement_contours_in_detection_area)
-        big_enough_motions_generator_filter: Generator = ((bounding_box, contour) for bounding_box, contour in bounding_boxes_and_contours_iterator if cv2.contourArea(contour) >= self.configuration["min_area_for_motion"])
-        big_enough_motions: list[tuple] = list(zip(*big_enough_motions_generator_filter))
+        motions_with_min_area_generator_filter: Generator = ((bounding_box, contour) for bounding_box, contour in bounding_boxes_and_contours_iterator if cv2.contourArea(contour) >= self._configuration["min_area_for_motion"])
+        motions_with_min_area: list[tuple] = list(zip(*motions_with_min_area_generator_filter))
 
-        if len(big_enough_motions) == 0:
-            print('returning cause len(big_enough_motions) == 0')
-            self.nb_consecutive_frames_with_motion_detected = 0
-            return None
+        if len(motions_with_min_area) == 0:
+            print('returning cause len(motions_with_min_area) == 0')
+            self._nb_consecutive_frames_with_motion_detected = 0
+            return tuple()
 
         # 3. is this a movement which lasts (for several consecutive frames) ?  -> if so, there is real movement !
 
-        self.nb_consecutive_frames_with_motion_detected += 1
+        self._nb_consecutive_frames_with_motion_detected += 1
 
-        if self.nb_consecutive_frames_with_motion_detected < self.configuration["min_frames_for_motion"]:
-            print('returning cause nb_consecutive_frames_with_motion_detected < self.configuration["min_frames_for_motion"]')
-            return None
+        if self._nb_consecutive_frames_with_motion_detected < self._configuration["min_frames_for_motion"]:
+            print('returning cause nb_consecutive_frames_with_motion_detected < self._configuration["min_frames_for_motion"]')
+            return tuple()
 
-        print(f'motion was detected in {self.nb_consecutive_frames_with_motion_detected} consecutive frames')
+        print(f'motion was detected in {self._nb_consecutive_frames_with_motion_detected} consecutive frames')
+
+        # Remove the bounding boxes which are too small compared to the biggest bounding_box
+
+        bounding_boxes_with_min_area, contours_with_min_area = motions_with_min_area
+
+        bounding_boxes_sorted_by_area_desc, contours_sorted_by_area_desc = zip(*sorted(zip(bounding_boxes_with_min_area, contours_with_min_area), key=lambda zipped_item: self._bounding_box_area(zipped_item[0]), reverse=True))
+
+        area_of_biggest_bounding_box = self._bounding_box_area(bounding_boxes_sorted_by_area_desc[0])
+
+        big_enough_boxes, big_enough_contours = zip(*((bounding_box, contour) for bounding_box, contour in zip(bounding_boxes_sorted_by_area_desc, contours_sorted_by_area_desc) if self._bounding_box_area(bounding_box) >= area_of_biggest_bounding_box / 4))
+
+        return big_enough_boxes, big_enough_contours
 
 
-        big_enough_bounding_boxes, big_enough_contours = big_enough_motions
+    def _bounding_box_area(self, bounding_box: BoundingBox) -> int:
+        if len(bounding_box) != 4:
+            raise ValueError('A bounding box must have four values (x, y, width, height)')
 
-        return big_enough_bounding_boxes, big_enough_contours
+        x, y, width, height = bounding_box
+        return height * width
+
+
+    def _bounding_box_contains_point(self, bounding_box: BoundingBox, point: Point) -> bool:
+        if len(bounding_box) != 4:
+            raise ValueError('A bounding box must have four values (x, y, width, height)')
+
+        if len(point) != 2:
+            raise ValueError('A point must have two coordinates (x, y)')
+
+        bounding_box_x, bounding_box_y, bounding_box_width, bounding_box_height = bounding_box
+        point_x, point_y = point
+
+        return (
+            point_x in range(bounding_box_x, bounding_box_x + bounding_box_width + 1) # + 1 is necessary as range() is exclusive at the end of the range
+            and point_y in range(bounding_box_y, bounding_box_y + bounding_box_height + 1) # + 1 is necessary as range() is exclusive at the end of the range
+        )
+
+    def _bounding_box_center(self, bounding_box: BoundingBox) -> Point:
+        if len(bounding_box) != 4:
+            raise ValueError('A bounding box must have four values (x, y, width, height)')
+
+        x, y, width, height = bounding_box
+        center_x = x + (width // 2)
+        center_y = y + (height // 2)
+        return center_x, center_y
