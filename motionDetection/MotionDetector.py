@@ -148,6 +148,10 @@ class MotionDetector:
 
         return big_enough_boxes, big_enough_contours
 
+    def resetDetector(self) -> None:
+        self.average_frame = None
+        self._nb_consecutive_frames_with_motion_detected = 0
+
 
     def _bounding_box_area(self, bounding_box: BoundingBox) -> int:
         if len(bounding_box) != 4:
