@@ -24,8 +24,8 @@ if __name__ == "__main__":
     }
 
     motion_detection_areas: tuple[BoundingBox, ...] = (
-        (800, 50, 1120, 200),
-        (800, 350, 1120, 300),
+        # (800, 50, 1120, 200),
+        # (800, 350, 1120, 300),
     )
 
     motionDetector = MotionDetector()
@@ -57,14 +57,7 @@ if __name__ == "__main__":
     if not cap.isOpened():
         print("Error opening video file")
 
-    frame_width = int(cap.get(3))
-    frame_height = int(cap.get(4))
-
     frame_number = 0
-
-    total_time = 0
-    total_detection_time = 0
-    number_frames_with_detection = 1
 
     def draw_on_frame(frame, bounding_box, bounding_box_color = (0, 255, 0), object_type = None, confidence = None, text_color = (0, 125, 0)):
         x, y, width, height = bounding_box
@@ -111,72 +104,112 @@ if __name__ == "__main__":
 
         return output
 
+    TIME_PERIOD_TO_CHECK_IF_SAME_OBJECT_IS_STILL_THERE_IN_SECONDS = 10
+    WAITING_TIME_BEFORE_RESUMING_DETECTION_IN_SECONDS = 10
+    previous_object_type_detected = None
+    time_when_object_was_detected = time.time()
+    time_when_checking_phase_started = time.time()
+    is_in_waiting_phase = False # Waiting before resuming detection
+    is_in_checking_phase = False # Checking if the last object detected is still there
+    can_detect = True
 
     while cap.isOpened():
         frame_number += 1
-        print('\n---------------------------------')
-        print('Frame no:\t', frame_number)
-        print('---------------------------------\n')
-        print('--------- Motion ---------\n')
+        # print('\n---------------------------------')
+        # print('Frame no:\t', frame_number)
+        # print('---------------------------------\n')
+        # print('--------- Motion ---------\n')
 
         # grab the array representing the image
         ret, frame = cap.read()
 
-        start_time = time.process_time()
+        if is_in_waiting_phase:
+            can_detect = False
+            current_time = time.time()
+            seconds_elapsed_since_detection = current_time - time_when_object_was_detected
 
-        motion_detection = motionDetector.detect(frame = frame, detection_areas = motion_detection_areas)
+            if seconds_elapsed_since_detection >= WAITING_TIME_BEFORE_RESUMING_DETECTION_IN_SECONDS:
+                is_in_waiting_phase = False
+                is_in_checking_phase = True
+                print('-------------- leaving waiting phase')
+                print('-------------- entering checking phase')
+                time_when_checking_phase_started = time.time()
 
-        for motion_detection_area in motion_detection_areas:
-            print('motion_detection_area:', motion_detection_area)
-            draw_on_frame(frame, motion_detection_area, (200, 100, 0))
+        elif is_in_checking_phase:
+            can_detect = True
+            current_time = time.time()
+            seconds_elapsed_since_checking_phase_started = current_time - time_when_checking_phase_started
 
-        if len(motion_detection) == 0:
-            print('no motion detection !!')
-
-        frame_has_detection = False
-
-        if len(motion_detection) > 0:
-            movement_bounding_boxes, _ = motion_detection
-
-            print('number of movement bounding boxes:', len(movement_bounding_boxes))
-
-            frame_has_detection = True
-
-            start_detection = time.process_time()
-            object_detection: list[list[tuple]] = objectDetector.detect(frame = frame, interest_areas = movement_bounding_boxes)
-            total_detection_time += time.process_time() - start_detection
-
-            for movement_bounding_box in movement_bounding_boxes:
-                draw_on_frame(frame, movement_bounding_box)
+            if seconds_elapsed_since_checking_phase_started >= TIME_PERIOD_TO_CHECK_IF_SAME_OBJECT_IS_STILL_THERE_IN_SECONDS:
+                is_in_checking_phase = False
+                print('-------------- leaving checking phase')
+                previous_object_type_detected = None
 
 
-            if len(object_detection) > 0:
-                for object_detections_in_sub_frame in object_detection:
-                    print('\n--------- Object ---------\n')
+        if can_detect:
+            motion_detection = motionDetector.detect(frame = frame, detection_areas = motion_detection_areas)
 
-                    print('nb objects detected in sub frame:', len(object_detections_in_sub_frame))
+            for motion_detection_area in motion_detection_areas:
+                draw_on_frame(frame, motion_detection_area, (200, 100, 0))
 
-                    if len(object_detections_in_sub_frame) == 0:
-                        continue
+            if len(motion_detection) == 0:
+                pass
+                # print('no motion detection !!')
 
-                    for detection_result_of_one_object in object_detections_in_sub_frame:
-                        object_type, object_confidence, object_bounding_box = detection_result_of_one_object
-                        draw_on_frame(frame, object_bounding_box, (0, 125, 0), object_type, object_confidence)
+            if len(motion_detection) > 0:
+                movement_bounding_boxes, _ = motion_detection
 
-                object_to_notify = get_object_with_highest_weight_and_area(object_detection, objects_to_detect_with_weights)
-                print('object_with_highest_weight_and_area:', object_to_notify)
-                if len(object_to_notify) > 0:
-                    object_to_notify_type, object_to_notify_confidence, object_to_notify_bounding_box = object_to_notify
-                    draw_on_frame(frame, object_to_notify_bounding_box, (0, 100, 200), object_to_notify_type, object_to_notify_confidence, (0, 100, 200))
+                print('number of movement bounding boxes:', len(movement_bounding_boxes))
 
+                print('\n--------- Object ---------\n')
 
-        if frame_has_detection:
-            total_time += time.process_time() - start_time
-            number_frames_with_detection += 1
+                object_detection: list[list[tuple]] = objectDetector.detect(frame = frame, interest_areas = movement_bounding_boxes)
 
-        print('avg detection time for frame:\t', total_detection_time / number_frames_with_detection)
-        print('avg total time for frame:\t', total_time / number_frames_with_detection)
-        print('number_frames_with_detection:', number_frames_with_detection)
+                for movement_bounding_box in movement_bounding_boxes:
+                    draw_on_frame(frame, movement_bounding_box)
+
+                if len(object_detection) > 0:
+                    for object_detections_in_sub_frame in object_detection:
+                        print('\n--------- Object detection in sub frame\n')
+
+                        print('nb objects detected in sub frame:', len(object_detections_in_sub_frame))
+
+                        if len(object_detections_in_sub_frame) == 0:
+                            continue
+
+                        for detection_result_of_one_object in object_detections_in_sub_frame:
+                            object_type, object_confidence, object_bounding_box = detection_result_of_one_object
+                            draw_on_frame(frame, object_bounding_box, (0, 125, 0), object_type, object_confidence)
+
+                    object_to_notify = get_object_with_highest_weight_and_area(object_detection, objects_to_detect_with_weights)
+
+                    print('object_with_highest_weight_and_area:', object_to_notify)
+
+                    if len(object_to_notify) > 0:
+                        object_to_notify_type, object_to_notify_confidence, object_to_notify_bounding_box = object_to_notify
+                        draw_on_frame(frame, object_to_notify_bounding_box, (0, 100, 200), object_to_notify_type, object_to_notify_confidence, (0, 100, 200))
+
+                        print(object_to_notify_type, 'DETECTED')
+                        print('previous_object_type_detected:', previous_object_type_detected)
+                        print('is_in_checking_phase:', is_in_checking_phase)
+
+                        must_notify_detection = (
+                            not is_in_checking_phase
+                            or (is_in_checking_phase and object_to_notify_type != previous_object_type_detected)
+                        )
+
+                        if must_notify_detection:
+                            # SEND NOTIFICATION OF DETECTION
+                            print('SENDING NOTIFICATION OF DETECTION FOR OJBECT', object_to_notify_type)
+
+                        previous_object_type_detected = object_to_notify_type
+                        is_in_checking_phase = False
+                        is_in_waiting_phase = True
+                        print('-------------- entering waiting phase')
+                        time_when_object_was_detected = time.time()
+                        motionDetector.resetDetector()
+                        objectDetector.resetDetector()
+
 
         cv2.namedWindow("output", cv2.WINDOW_NORMAL)
         cv2.imshow('output', frame)
