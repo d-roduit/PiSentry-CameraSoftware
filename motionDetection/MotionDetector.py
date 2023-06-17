@@ -5,7 +5,6 @@ from detection_typing import BoundingBox, Frame, Point
 
 class MotionDetector:
     def __init__(self) -> None:
-        cv2.startWindowThread()
         self._configuration: dict[str, Any] = {
             'delta_threshold': 9,
             'min_area_for_motion': 1000,
@@ -65,14 +64,6 @@ class MotionDetector:
 
         # dilate the thresholded image to fill in holes
         dilated_frame: Frame = cv2.dilate(src=thresholded_frame, kernel=np.ones((5, 5)), iterations=2)
-
-
-        cv2.namedWindow("output2", cv2.WINDOW_NORMAL)
-        cv2.imshow('output2', dilated_frame)
-
-        # Press Q on keyboard to  exit
-        cv2.waitKey(25)
-
 
         # in OpenCV 2, findContours(...) returns two parameters. But if we were to use OpenCV >= 3.2,
         # findContours(...) would return three parameters and the contours value would be
