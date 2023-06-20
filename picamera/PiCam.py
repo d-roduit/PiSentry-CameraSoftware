@@ -15,26 +15,23 @@ class PiCam:
         self._streamingOutput = FfmpegOutput('-f flv rtmp://192.168.1.211:1935/PiSentry/Spooky_Stream')
         self._recordingOutput = CircularOutput(buffersize=150)  # 150 means 30 images * 5 seconds
         self._encoder = H264Encoder(repeat=True, iperiod=15)
-        # self._encoder.output = [self._streamingOutput, self._recordingOutput]
-        self._encoder.output = [self._recordingOutput]
 
-        self._picam2.start()
         self._picam2.start_encoder(self._encoder)
+        self._picam2.start()
 
+        # This line must be after the `start_encoder()` line not to start the outputs at the same time as the encoder
+        self._encoder.output = [self._streamingOutput, self._recordingOutput]
 
         self._recording_filepath = ''
 
     def start_streaming(self):
         try:
-            # self._picam2.start_encoder(self._encoder, self._streamingOutput)
-            # self._picam2.start_encoder(self._encoder)
             self._streamingOutput.start()
         except Exception as exception:
             print(f'Exception caught in start_streaming() : {exception}')
 
     def stop_streaming(self):
         try:
-            # self._picam2.stop_encoder()
             self._streamingOutput.stop()
         except Exception as exception:
             print(f'Exception caught in stop_streaming() : {exception}')
