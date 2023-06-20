@@ -2,7 +2,6 @@ from picamera2 import Picamera2
 from picamera2.encoders import H264Encoder
 from picamera2.outputs import FfmpegOutput, CircularOutput
 from datetime import datetime
-import time
 import subprocess
 import os
 
@@ -23,6 +22,8 @@ class PiCam:
         self._picam2.start_encoder(self._encoder)
 
 
+        self._recording_filepath = ''
+
     def start_streaming(self):
         try:
             # self._picam2.start_encoder(self._encoder, self._streamingOutput)
@@ -40,32 +41,36 @@ class PiCam:
 
     def start_recording(self):
         try:
-            recording_filename = f'recording_{datetime.now().strftime("%d-%m-%Y_%H-%M-%S")}'
-            self._recordingOutput.fileoutput = f'{recording_filename}.h264'
+            self._recording_filepath = f'recording_{datetime.now().strftime("%d-%m-%Y_%H-%M-%S")}'
+            self._recordingOutput.fileoutput = f'{self._recording_filepath}.h264'
             self._recordingOutput.start()
-            time.sleep(5)
+        except Exception as exception:
+            print(f'Exception caught in start_recording() : {exception}')
+
+    def stop_recording(self):
+        try:
             self._recordingOutput.stop()
 
             try:
-                subprocess.run(['ffmpeg', '-framerate', '30', '-i', f'{recording_filename}.h264', '-c', 'copy', f'{recording_filename}.mp4'], check=True, timeout=60)
-            except FileNotFoundError as file_not_found_exception: # one of the program called does not exist
+                subprocess.run(['ffmpeg', '-framerate', '30', '-i', f'{self._recording_filepath}.h264', '-c', 'copy',
+                                f'{self._recording_filepath}.mp4'], check=True, timeout=60)
+            except FileNotFoundError as file_not_found_exception:  # one of the program called does not exist
                 print(f'Process failed because the executable could not be found.\n{file_not_found_exception}')
-            except subprocess.CalledProcessError as called_process_exception: # subprocess execution returned a non-zero code
+            except subprocess.CalledProcessError as called_process_exception:  # subprocess execution returned a non-zero code
                 print(
                     f'Process execution did not return a successful return code (0). '
                     f'Returned {called_process_exception.returncode}\n{called_process_exception}'
                 )
-            except subprocess.TimeoutExpired  as timeout_exception: # program did not finish its task before timeout
+            except subprocess.TimeoutExpired as timeout_exception:  # program did not finish its task before timeout
                 print(f'Process timed out.\n{timeout_exception}')
 
-            if os.path.exists(f'{recording_filename}.h264'):
-                os.remove(f'{recording_filename}.h264')
-                print(f'File "{recording_filename}.h264" removed successfully')
+            if os.path.exists(f'{self._recording_filepath}.h264'):
+                os.remove(f'{self._recording_filepath}.h264')
+                print(f'File "{self._recording_filepath}.h264" removed successfully')
             else:
-                print(f'The file "{recording_filename}.h264" does not exist')
-
+                print(f'The file "{self._recording_filepath}.h264" does not exist')
         except Exception as exception:
-            print(f'Exception caught in start_recording() : {exception}')
+            print(f'Exception caught in stop_recording() : {exception}')
 
     def get_frame(self):
         return self._picam2.capture_array()
