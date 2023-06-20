@@ -5,6 +5,22 @@ from datetime import datetime
 import subprocess
 import os
 
+
+def create_mp4_from_h264(h264_recording_filepath: str):
+    try:
+        subprocess.run(['ffmpeg', '-framerate', '30', '-i', f'{h264_recording_filepath}.h264', '-c', 'copy',
+                        f'{h264_recording_filepath}.mp4'], check=True, timeout=60)
+    except FileNotFoundError as file_not_found_exception:  # one of the program called does not exist
+        print(f'Process failed because the executable could not be found.\n{file_not_found_exception}')
+    except subprocess.CalledProcessError as called_process_exception:  # subprocess execution returned a non-zero code
+        print(
+            f'Process execution did not return a successful return code (0). '
+            f'Returned {called_process_exception.returncode}\n{called_process_exception}'
+        )
+    except subprocess.TimeoutExpired as timeout_exception:  # program did not finish its task before timeout
+        print(f'Process timed out.\n{timeout_exception}')
+
+
 class PiCam:
     def __init__(self):
         self._picam2 = Picamera2()
@@ -48,18 +64,7 @@ class PiCam:
         try:
             self._recordingOutput.stop()
 
-            try:
-                subprocess.run(['ffmpeg', '-framerate', '30', '-i', f'{self._recording_filepath}.h264', '-c', 'copy',
-                                f'{self._recording_filepath}.mp4'], check=True, timeout=60)
-            except FileNotFoundError as file_not_found_exception:  # one of the program called does not exist
-                print(f'Process failed because the executable could not be found.\n{file_not_found_exception}')
-            except subprocess.CalledProcessError as called_process_exception:  # subprocess execution returned a non-zero code
-                print(
-                    f'Process execution did not return a successful return code (0). '
-                    f'Returned {called_process_exception.returncode}\n{called_process_exception}'
-                )
-            except subprocess.TimeoutExpired as timeout_exception:  # program did not finish its task before timeout
-                print(f'Process timed out.\n{timeout_exception}')
+            create_mp4_from_h264(self._recording_filepath)
 
             if os.path.exists(f'{self._recording_filepath}.h264'):
                 os.remove(f'{self._recording_filepath}.h264')
@@ -71,5 +76,6 @@ class PiCam:
 
     def get_frame(self):
         return self._picam2.capture_array()
+
 
 picam = PiCam()
