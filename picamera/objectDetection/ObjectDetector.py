@@ -1,6 +1,6 @@
 import cv2
 from typing import Optional, Union, Any
-from detection_typing import Frame, BoundingBox, ObjectDetectionResult
+from picamera.detection_typing import Frame, BoundingBox, ObjectDetectionResult
 
 class ObjectDetector:
     def __init__(self) -> None:

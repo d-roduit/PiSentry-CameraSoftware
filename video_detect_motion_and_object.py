@@ -1,18 +1,20 @@
 import os
 import cv2
-from motionDetection import MotionDetector
-from objectDetection import ObjectDetector
+from picamera.motionDetection import MotionDetector
+from picamera.objectDetection import ObjectDetector
 import time
-from detection_typing import BoundingBox
+from picamera.detection_typing import BoundingBox
+from picamera import picam
 
 if __name__ == "__main__":
     cv2.startWindowThread()
     cap = cv2.VideoCapture('videos/pi_record_1920x1080_7.mp4')
 
     directory_path = os.path.dirname(__file__)
-    coco_dataset_file_path = os.path.join(directory_path, 'objectDetection', 'coco.names')
-    neural_network_weights_file_path = os.path.join(directory_path, 'objectDetection', 'frozen_inference_graph.pb')
-    neural_network_config_file_path = os.path.join(directory_path, 'objectDetection', 'ssd_mobilenet_v3_large_coco_2020_01_14.pbtxt')
+    object_detection_directory = os.path.join(directory_path, 'picamera', 'objectDetection')
+    coco_dataset_file_path = os.path.join(object_detection_directory, 'coco.names')
+    neural_network_weights_file_path = os.path.join(object_detection_directory, 'frozen_inference_graph.pb')
+    neural_network_config_file_path = os.path.join(object_detection_directory, 'ssd_mobilenet_v3_large_coco_2020_01_14.pbtxt')
 
     objects_to_detect_with_weights = {
         'car': 5,

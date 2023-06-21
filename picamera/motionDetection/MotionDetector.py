@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from typing import Optional, Any, Iterator, Generator, Union
-from detection_typing import BoundingBox, Frame, Point
+from picamera.detection_typing import BoundingBox, Frame, Point
 
 class MotionDetector:
     def __init__(self) -> None:
