@@ -35,7 +35,7 @@ if __name__ == "__main__":
     motionDetector.configure_detection(
         delta_threshold = 9,
         min_area_for_motion = 1000,
-        min_frames_for_motion = 20
+        min_frames_for_motion = 13
     )
 
     objectDetector.configure_dataset(coco_dataset_file_path)
@@ -51,7 +51,7 @@ if __name__ == "__main__":
         confidence_threshold = 0.65,
         non_maximum_suppression_threshold = 0.1,
         objects_to_detect = list(objects_to_detect_with_weights.keys()),
-        min_frames_for_detection = 10
+        min_frames_for_detection = 7
     )
 
     frame_number = 0
@@ -101,8 +101,8 @@ if __name__ == "__main__":
 
         return output
 
-    TIME_PERIOD_TO_CHECK_IF_SAME_OBJECT_IS_STILL_THERE_IN_SECONDS = 10
-    WAITING_TIME_BEFORE_RESUMING_DETECTION_IN_SECONDS = 10
+    TIME_PERIOD_TO_CHECK_IF_SAME_OBJECT_IS_STILL_THERE_IN_SECONDS = 60
+    WAITING_TIME_BEFORE_RESUMING_DETECTION_IN_SECONDS = 60
     previous_object_type_detected = None
     time_when_object_was_detected = time.time()
     time_when_checking_phase_started = time.time()

@@ -38,7 +38,7 @@ class PiCam:
 
         # self._streamingOutput = FfmpegOutput('-f flv rtmp://mediaserver.pisentry.app/PiSentry/Spooky_Stream')
         self._streamingOutput = FfmpegOutput('-f flv rtmp://192.168.1.211:1935/PiSentry/Spooky_Stream')
-        self._recordingOutput = CircularOutput(buffersize=150)  # 150 means 30 images * 5 seconds
+        self._recordingOutput = CircularOutput(buffersize=240)  # 240 means 30 images * 8 seconds
         self._encoder = H264Encoder(repeat=True, iperiod=15)
 
         self._picam2.start_encoder(self._encoder)
