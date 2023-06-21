@@ -8,7 +8,6 @@ from picamera import picam
 
 if __name__ == "__main__":
     cv2.startWindowThread()
-    cap = cv2.VideoCapture('videos/pi_record_1920x1080_7.mp4')
 
     directory_path = os.path.dirname(__file__)
     object_detection_directory = os.path.join(directory_path, 'picamera', 'objectDetection')
@@ -54,10 +53,6 @@ if __name__ == "__main__":
         objects_to_detect = list(objects_to_detect_with_weights.keys()),
         min_frames_for_detection = 10
     )
-
-    # Check if camera opened successfully
-    if not cap.isOpened():
-        print("Error opening video file")
 
     frame_number = 0
 
@@ -115,15 +110,13 @@ if __name__ == "__main__":
     is_in_checking_phase = False # Checking if the last object detected is still there
     can_detect = True
 
-    while cap.isOpened():
+    # grab the array representing the image
+    while (frame := picam.get_frame()) is not None:
         frame_number += 1
         # print('\n---------------------------------')
         # print('Frame no:\t', frame_number)
         # print('---------------------------------\n')
         # print('--------- Motion ---------\n')
-
-        # grab the array representing the image
-        ret, frame = cap.read()
 
         if is_in_waiting_phase:
             can_detect = False
@@ -219,8 +212,6 @@ if __name__ == "__main__":
         # Press Q on keyboard to  exit
         if cv2.waitKey(25) & 0xFF == ord('q'):
             break
-
-    cap.release()
 
     # Closes all the frames
     cv2.destroyAllWindows()
