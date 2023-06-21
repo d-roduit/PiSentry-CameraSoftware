@@ -5,11 +5,21 @@ from datetime import datetime
 import subprocess
 import os
 
+def from_h264_create_file(h264_recording_filepath: str, new_file_extension: str):
+    h264_extension = '.h264'
 
-def create_mp4_from_h264(h264_recording_filepath: str):
+    if not h264_recording_filepath.endswith(h264_extension):
+        raise ValueError(f'A file path ending with extension {h264_extension} must be provided')
+
+    if not new_file_extension.startswith('.'):
+        raise ValueError('The new file extension must starts with a point (.)')
+
+    recording_filepath_without_extension = h264_recording_filepath[:-len(h264_extension)]
+    new_filepath = recording_filepath_without_extension + new_file_extension
+
     try:
-        subprocess.run(['ffmpeg', '-framerate', '30', '-i', f'{h264_recording_filepath}.h264', '-c', 'copy',
-                        f'{h264_recording_filepath}.mp4'], check=True, timeout=60)
+        subprocess.run(['ffmpeg', '-framerate', '30', '-i', h264_recording_filepath, '-c', 'copy',
+                        f'{new_filepath}'], check=True, timeout=60)
     except FileNotFoundError as file_not_found_exception:  # one of the program called does not exist
         print(f'Process failed because the executable could not be found.\n{file_not_found_exception}')
     except subprocess.CalledProcessError as called_process_exception:  # subprocess execution returned a non-zero code
@@ -19,7 +29,6 @@ def create_mp4_from_h264(h264_recording_filepath: str):
         )
     except subprocess.TimeoutExpired as timeout_exception:  # program did not finish its task before timeout
         print(f'Process timed out.\n{timeout_exception}')
-
 
 class PiCam:
     def __init__(self):
@@ -38,7 +47,7 @@ class PiCam:
         # This line must be after the `start_encoder()` line not to start the outputs at the same time as the encoder
         self._encoder.output = [self._streamingOutput, self._recordingOutput]
 
-        self._recording_filepath = ''
+        self._h264_recording_filepath = ''
 
     def start_streaming(self):
         try:
@@ -54,8 +63,8 @@ class PiCam:
 
     def start_recording(self):
         try:
-            self._recording_filepath = f'recording_{datetime.now().strftime("%d-%m-%Y_%H-%M-%S")}'
-            self._recordingOutput.fileoutput = f'{self._recording_filepath}.h264'
+            self._h264_recording_filepath = f'./recording_{datetime.now().strftime("%d-%m-%Y_%H-%M-%S")}.h264'
+            self._recordingOutput.fileoutput = self._h264_recording_filepath
             self._recordingOutput.start()
         except Exception as exception:
             print(f'Exception caught in start_recording() : {exception}')
@@ -64,13 +73,13 @@ class PiCam:
         try:
             self._recordingOutput.stop()
 
-            create_mp4_from_h264(self._recording_filepath)
+            from_h264_create_file(self._h264_recording_filepath, '.mp4')
 
-            if os.path.exists(f'{self._recording_filepath}.h264'):
-                os.remove(f'{self._recording_filepath}.h264')
-                print(f'File "{self._recording_filepath}.h264" removed successfully')
+            if os.path.exists(self._h264_recording_filepath):
+                os.remove(self._h264_recording_filepath)
+                print(f'File "{self._h264_recording_filepath}" removed successfully')
             else:
-                print(f'The file "{self._recording_filepath}.h264" does not exist')
+                print(f'File "{self._h264_recording_filepath}" does not exist')
         except Exception as exception:
             print(f'Exception caught in stop_recording() : {exception}')
 
