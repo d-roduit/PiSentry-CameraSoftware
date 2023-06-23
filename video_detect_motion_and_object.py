@@ -101,13 +101,18 @@ if __name__ == "__main__":
 
         return output
 
+    RECORDING_PHASE_DURATION_IN_SECONDS = 7
+    MAX_RECORDING_PHASE_DURATION_IN_SECONDS = 120
     TIME_PERIOD_TO_CHECK_IF_SAME_OBJECT_IS_STILL_THERE_IN_SECONDS = 60
     WAITING_TIME_BEFORE_RESUMING_DETECTION_IN_SECONDS = 60
     previous_object_type_detected = None
     time_when_object_was_detected = time.time()
+    time_when_recording_phase_started = time.time()
+    time_when_waiting_phase_started = time.time()
     time_when_checking_phase_started = time.time()
-    is_in_waiting_phase = False # Waiting before resuming detection
-    is_in_checking_phase = False # Checking if the last object detected is still there
+    is_in_recording_phase = False  # Recording video of detection
+    is_in_waiting_phase = False  # Waiting before resuming detection
+    is_in_checking_phase = False  # Checking if the last object detected is still there
     can_detect = True
 
     # grab the array representing the image
@@ -118,20 +123,38 @@ if __name__ == "__main__":
         # print('---------------------------------\n')
         # print('--------- Motion ---------\n')
 
-        if is_in_waiting_phase:
-            can_detect = False
+        if is_in_recording_phase:
             current_time = time.time()
-            seconds_elapsed_since_detection = current_time - time_when_object_was_detected
+            seconds_elapsed_since_object_was_detected = current_time - time_when_object_was_detected
+            seconds_elapsed_since_recording_phase_started = current_time - time_when_recording_phase_started
+            if (
+                seconds_elapsed_since_object_was_detected >= RECORDING_PHASE_DURATION_IN_SECONDS
+                or seconds_elapsed_since_recording_phase_started >= MAX_RECORDING_PHASE_DURATION_IN_SECONDS
+            ):
+                picam.stop_recording()
+                print('stop recording')
+                is_in_recording_phase = False
+                is_in_waiting_phase = True
+                time_when_waiting_phase_started = time.time()
+                can_detect = False
+                motionDetector.resetDetector()
+                objectDetector.resetDetector()
+                print('-------------- leaving recording phase')
+                print('-------------- entering waiting phase')
 
-            if seconds_elapsed_since_detection >= WAITING_TIME_BEFORE_RESUMING_DETECTION_IN_SECONDS:
+        elif is_in_waiting_phase:
+            current_time = time.time()
+            seconds_elapsed_since_waiting_phase_started = current_time - time_when_waiting_phase_started
+
+            if seconds_elapsed_since_waiting_phase_started >= WAITING_TIME_BEFORE_RESUMING_DETECTION_IN_SECONDS:
                 is_in_waiting_phase = False
                 is_in_checking_phase = True
                 print('-------------- leaving waiting phase')
                 print('-------------- entering checking phase')
                 time_when_checking_phase_started = time.time()
+                can_detect = True
 
         elif is_in_checking_phase:
-            can_detect = True
             current_time = time.time()
             seconds_elapsed_since_checking_phase_started = current_time - time_when_checking_phase_started
 
@@ -139,7 +162,6 @@ if __name__ == "__main__":
                 is_in_checking_phase = False
                 print('-------------- leaving checking phase')
                 previous_object_type_detected = None
-
 
         if can_detect:
             motion_detection = motionDetector.detect(frame = frame, detection_areas = motion_detection_areas)
@@ -186,25 +208,37 @@ if __name__ == "__main__":
 
                         print(object_to_notify_type, 'DETECTED')
                         print('previous_object_type_detected:', previous_object_type_detected)
+                        print('is_in_recording_phase:', is_in_recording_phase)
                         print('is_in_checking_phase:', is_in_checking_phase)
 
                         must_notify_detection = (
-                            not is_in_checking_phase
-                            or (is_in_checking_phase and object_to_notify_type != previous_object_type_detected)
+                                (not is_in_recording_phase and not is_in_checking_phase)
+                                or (is_in_checking_phase and object_to_notify_type != previous_object_type_detected)
                         )
 
                         if must_notify_detection:
                             # SEND NOTIFICATION OF DETECTION
                             print('SENDING NOTIFICATION OF DETECTION FOR OJBECT', object_to_notify_type)
 
-                        previous_object_type_detected = object_to_notify_type
-                        is_in_checking_phase = False
-                        is_in_waiting_phase = True
-                        print('-------------- entering waiting phase')
-                        time_when_object_was_detected = time.time()
-                        motionDetector.resetDetector()
-                        objectDetector.resetDetector()
+                        if not is_in_recording_phase and not is_in_checking_phase:
+                            is_in_recording_phase = True
+                            time_when_recording_phase_started = time.time()
+                            print('-------------- entering recording phase')
+                            picam.start_recording()
+                            print('start recording')
 
+                        if is_in_checking_phase:
+                            is_in_checking_phase = False
+                            is_in_waiting_phase = True
+                            time_when_waiting_phase_started = time.time()
+                            can_detect = False
+                            motionDetector.resetDetector()
+                            objectDetector.resetDetector()
+                            print('-------------- leaving checking phase')
+                            print('-------------- entering waiting phase')
+
+                        time_when_object_was_detected = time.time()
+                        previous_object_type_detected = object_to_notify_type
 
         cv2.namedWindow("output", cv2.WINDOW_NORMAL)
         cv2.imshow('output', frame)
