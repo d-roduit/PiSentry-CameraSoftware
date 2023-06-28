@@ -27,6 +27,12 @@ if __name__ == "__main__":
     motion_detection_areas: tuple[BoundingBox, ...] = (
         # (800, 50, 1120, 200),
         # (800, 350, 1120, 300),
+        (250, 0, 200, 200),
+        (450, 0, 725, 1080),
+        (0, 500, 450, 1080),
+        (1175, 300, 350, 1080),
+        (1525, 350, 250, 1080),
+        (1775, 400, 250, 300),
     )
 
     motionDetector = MotionDetector()
@@ -51,7 +57,7 @@ if __name__ == "__main__":
         confidence_threshold = 0.65,
         non_maximum_suppression_threshold = 0.1,
         objects_to_detect = list(objects_to_detect_with_weights.keys()),
-        min_frames_for_detection = 7
+        min_frames_for_detection = 5
     )
 
     frame_number = 0
@@ -101,10 +107,10 @@ if __name__ == "__main__":
 
         return output
 
-    RECORDING_PHASE_DURATION_IN_SECONDS = 7
+    RECORDING_PHASE_DURATION_IN_SECONDS = 8
     MAX_RECORDING_PHASE_DURATION_IN_SECONDS = 120
-    TIME_PERIOD_TO_CHECK_IF_SAME_OBJECT_IS_STILL_THERE_IN_SECONDS = 60
-    WAITING_TIME_BEFORE_RESUMING_DETECTION_IN_SECONDS = 60
+    TIME_PERIOD_TO_CHECK_IF_SAME_OBJECT_IS_STILL_THERE_IN_SECONDS = 45
+    WAITING_TIME_BEFORE_RESUMING_DETECTION_IN_SECONDS = 30
     previous_object_type_detected = None
     time_when_object_was_detected = time.time()
     time_when_recording_phase_started = time.time()
