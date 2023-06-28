@@ -197,7 +197,7 @@ class PiCam:
 
         RECORDING_PHASE_DURATION_IN_SECONDS = 8
         MAX_RECORDING_PHASE_DURATION_IN_SECONDS = 120
-        TIME_PERIOD_TO_CHECK_IF_SAME_OBJECT_IS_STILL_THERE_IN_SECONDS = 60
+        CHECKING_PHASE_DURATION_IN_SECONDS = 60
 
         previous_object_type_detected = None
         time_when_object_was_detected = time.time()
@@ -234,7 +234,7 @@ class PiCam:
                 current_time = time.time()
                 seconds_elapsed_since_checking_phase_started = current_time - time_when_checking_phase_started
 
-                if seconds_elapsed_since_checking_phase_started >= TIME_PERIOD_TO_CHECK_IF_SAME_OBJECT_IS_STILL_THERE_IN_SECONDS:
+                if seconds_elapsed_since_checking_phase_started >= CHECKING_PHASE_DURATION_IN_SECONDS:
                     is_in_checking_phase = False
                     print('-------------- leaving checking phase')
                     previous_object_type_detected = None
