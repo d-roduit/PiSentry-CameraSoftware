@@ -217,17 +217,16 @@ if __name__ == "__main__":
                         )
 
                         if must_notify_detection:
-                            # SEND NOTIFICATION OF DETECTION
-                            print('SENDING NOTIFICATION OF DETECTION FOR OJBECT', object_to_notify_type)
-
-                        if not is_in_recording_phase and not is_in_checking_phase:
+                            is_in_checking_phase = False
                             is_in_recording_phase = True
                             time_when_recording_phase_started = time.time()
                             print('-------------- entering recording phase')
                             picam.start_recording()
                             print('start recording')
+                            # SEND NOTIFICATION OF DETECTION
+                            print('SENDING NOTIFICATION OF DETECTION FOR OJBECT', object_to_notify_type)
 
-                        if is_in_checking_phase:
+                        if is_in_checking_phase and object_to_notify_type == previous_object_type_detected:
                             is_in_checking_phase = False
                             is_in_waiting_phase = True
                             time_when_waiting_phase_started = time.time()
