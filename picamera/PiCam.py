@@ -197,17 +197,14 @@ class PiCam:
 
         RECORDING_PHASE_DURATION_IN_SECONDS = 8
         MAX_RECORDING_PHASE_DURATION_IN_SECONDS = 120
-        TIME_PERIOD_TO_CHECK_IF_SAME_OBJECT_IS_STILL_THERE_IN_SECONDS = 45
-        WAITING_TIME_BEFORE_RESUMING_DETECTION_IN_SECONDS = 30
+        TIME_PERIOD_TO_CHECK_IF_SAME_OBJECT_IS_STILL_THERE_IN_SECONDS = 60
+
         previous_object_type_detected = None
         time_when_object_was_detected = time.time()
         time_when_recording_phase_started = time.time()
-        time_when_waiting_phase_started = time.time()
         time_when_checking_phase_started = time.time()
         is_in_recording_phase = False  # Recording video of detection
-        is_in_waiting_phase = False  # Waiting before resuming detection
         is_in_checking_phase = False  # Checking if the last object detected is still there
-        can_detect = True
 
         # grab the array representing the image
         while (frame := self.get_frame()) is not None:
@@ -228,25 +225,10 @@ class PiCam:
                     self.stop_recording()
                     print('stop recording')
                     is_in_recording_phase = False
-                    is_in_waiting_phase = True
-                    time_when_waiting_phase_started = time.time()
-                    can_detect = False
-                    motionDetector.resetDetector()
-                    objectDetector.resetDetector()
-                    print('-------------- leaving recording phase')
-                    print('-------------- entering waiting phase')
-
-            elif is_in_waiting_phase:
-                current_time = time.time()
-                seconds_elapsed_since_waiting_phase_started = current_time - time_when_waiting_phase_started
-
-                if seconds_elapsed_since_waiting_phase_started >= WAITING_TIME_BEFORE_RESUMING_DETECTION_IN_SECONDS:
-                    is_in_waiting_phase = False
                     is_in_checking_phase = True
-                    print('-------------- leaving waiting phase')
-                    print('-------------- entering checking phase')
                     time_when_checking_phase_started = time.time()
-                    can_detect = True
+                    print('-------------- leaving recording phase')
+                    print('-------------- entering checking phase')
 
             elif is_in_checking_phase:
                 current_time = time.time()
@@ -257,84 +239,76 @@ class PiCam:
                     print('-------------- leaving checking phase')
                     previous_object_type_detected = None
 
-            if can_detect:
-                motion_detection = motionDetector.detect(frame=frame, detection_areas=motion_detection_areas)
+            motion_detection = motionDetector.detect(frame=frame, detection_areas=motion_detection_areas)
 
-                for motion_detection_area in motion_detection_areas:
-                    draw_on_frame(frame, motion_detection_area, (200, 100, 0))
+            for motion_detection_area in motion_detection_areas:
+                draw_on_frame(frame, motion_detection_area, (200, 100, 0))
 
-                if len(motion_detection) == 0:
-                    pass
-                    # print('no motion detection !!')
+            if len(motion_detection) == 0:
+                pass
+                # print('no motion detection !!')
 
-                if len(motion_detection) > 0:
-                    movement_bounding_boxes, _ = motion_detection
+            if len(motion_detection) > 0:
+                movement_bounding_boxes, _ = motion_detection
 
-                    print('number of movement bounding boxes:', len(movement_bounding_boxes))
+                print('number of movement bounding boxes:', len(movement_bounding_boxes))
 
-                    print('\n--------- Object ---------\n')
+                print('\n--------- Object ---------\n')
 
-                    object_detection: list[list[tuple]] = objectDetector.detect(frame=frame,
-                                                                                interest_areas=movement_bounding_boxes)
+                object_detection: list[list[tuple]] = objectDetector.detect(frame=frame,
+                                                                            interest_areas=movement_bounding_boxes)
 
-                    for movement_bounding_box in movement_bounding_boxes:
-                        draw_on_frame(frame, movement_bounding_box)
+                for movement_bounding_box in movement_bounding_boxes:
+                    draw_on_frame(frame, movement_bounding_box)
 
-                    if len(object_detection) > 0:
-                        for object_detections_in_sub_frame in object_detection:
-                            print('\n--------- Object detection in sub frame\n')
+                if len(object_detection) > 0:
+                    for object_detections_in_sub_frame in object_detection:
+                        print('\n--------- Object detection in sub frame\n')
 
-                            print('nb objects detected in sub frame:', len(object_detections_in_sub_frame))
+                        print('nb objects detected in sub frame:', len(object_detections_in_sub_frame))
 
-                            if len(object_detections_in_sub_frame) == 0:
-                                continue
+                        if len(object_detections_in_sub_frame) == 0:
+                            continue
 
-                            for detection_result_of_one_object in object_detections_in_sub_frame:
-                                object_type, object_confidence, object_bounding_box = detection_result_of_one_object
-                                draw_on_frame(frame, object_bounding_box, (0, 125, 0), object_type, object_confidence)
+                        for detection_result_of_one_object in object_detections_in_sub_frame:
+                            object_type, object_confidence, object_bounding_box = detection_result_of_one_object
+                            draw_on_frame(frame, object_bounding_box, (0, 125, 0), object_type, object_confidence)
 
-                        object_to_notify = get_object_with_highest_weight_and_area(object_detection,
-                                                                                   objects_to_detect_with_weights)
+                    object_to_notify = get_object_with_highest_weight_and_area(object_detection,
+                                                                               objects_to_detect_with_weights)
 
-                        print('object_with_highest_weight_and_area:', object_to_notify)
+                    print('object_with_highest_weight_and_area:', object_to_notify)
 
-                        if len(object_to_notify) > 0:
-                            object_to_notify_type, object_to_notify_confidence, object_to_notify_bounding_box = object_to_notify
-                            draw_on_frame(frame, object_to_notify_bounding_box, (0, 100, 200), object_to_notify_type,
-                                          object_to_notify_confidence, (0, 100, 200))
+                    if len(object_to_notify) > 0:
+                        object_to_notify_type, object_to_notify_confidence, object_to_notify_bounding_box = object_to_notify
+                        draw_on_frame(frame, object_to_notify_bounding_box, (0, 100, 200), object_to_notify_type,
+                                      object_to_notify_confidence, (0, 100, 200))
 
-                            print(object_to_notify_type, 'DETECTED')
-                            print('previous_object_type_detected:', previous_object_type_detected)
-                            print('is_in_recording_phase:', is_in_recording_phase)
-                            print('is_in_checking_phase:', is_in_checking_phase)
+                        print(object_to_notify_type, 'DETECTED')
+                        print('previous_object_type_detected:', previous_object_type_detected)
+                        print('is_in_recording_phase:', is_in_recording_phase)
+                        print('is_in_checking_phase:', is_in_checking_phase)
 
-                            must_notify_detection = (
-                                    (not is_in_recording_phase and not is_in_checking_phase)
-                                    or (is_in_checking_phase and object_to_notify_type != previous_object_type_detected)
-                            )
+                        must_notify_detection = (
+                                (not is_in_recording_phase and not is_in_checking_phase)
+                                or (is_in_checking_phase and object_to_notify_type != previous_object_type_detected)
+                        )
 
-                            if must_notify_detection:
-                                is_in_checking_phase = False
-                                is_in_recording_phase = True
-                                time_when_recording_phase_started = time.time()
-                                print('-------------- entering recording phase')
-                                self.start_recording()
-                                print('start recording')
-                                # SEND NOTIFICATION OF DETECTION
-                                print('SENDING NOTIFICATION OF DETECTION FOR OJBECT', object_to_notify_type)
+                        if must_notify_detection:
+                            is_in_checking_phase = False
+                            is_in_recording_phase = True
+                            time_when_recording_phase_started = time.time()
+                            print('-------------- entering recording phase')
+                            self.start_recording()
+                            print('start recording')
+                            # SEND NOTIFICATION OF DETECTION
+                            print('SENDING NOTIFICATION OF DETECTION FOR OJBECT', object_to_notify_type)
 
-                            if is_in_checking_phase and object_to_notify_type == previous_object_type_detected:
-                                is_in_checking_phase = False
-                                is_in_waiting_phase = True
-                                time_when_waiting_phase_started = time.time()
-                                can_detect = False
-                                motionDetector.resetDetector()
-                                objectDetector.resetDetector()
-                                print('-------------- leaving checking phase')
-                                print('-------------- entering waiting phase')
+                        elif is_in_checking_phase and object_to_notify_type == previous_object_type_detected:
+                            time_when_checking_phase_started = time.time()
 
-                            time_when_object_was_detected = time.time()
-                            previous_object_type_detected = object_to_notify_type
+                        time_when_object_was_detected = time.time()
+                        previous_object_type_detected = object_to_notify_type
 
             cv2.namedWindow("output", cv2.WINDOW_NORMAL)
             cv2.imshow('output', frame)
