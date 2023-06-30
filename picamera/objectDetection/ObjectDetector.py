@@ -137,5 +137,5 @@ class ObjectDetector:
 
         return detections_with_min_frames
 
-    def resetDetector(self) -> None:
+    def reset_detector(self) -> None:
         self._nb_frames_for_detected_objects = {}
