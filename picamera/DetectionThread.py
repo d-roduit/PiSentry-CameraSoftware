@@ -6,6 +6,10 @@ from picamera.motionDetection import MotionDetector
 from picamera.objectDetection import ObjectDetector
 from picamera.detection_typing import BoundingBox
 
+# DEBUG VARIABLES
+debug_display_video_window = False
+debug_draw_detection_boxes_on_video = False
+
 def draw_on_frame(frame, bounding_box, bounding_box_color=(0, 255, 0), object_type=None, confidence=None,
                   text_color=(0, 125, 0)) -> None:
     x, y, width, height = bounding_box
@@ -113,8 +117,9 @@ class DetectionThread(Thread):
         )
 
     def run(self):
-        # cv2.startWindowThread()
-        # cv2.namedWindow("output", cv2.WINDOW_NORMAL)
+        if debug_display_video_window:
+            cv2.startWindowThread()
+            cv2.namedWindow("debug", cv2.WINDOW_NORMAL)
 
         self._motion_detector.reset_detector()
         self._object_detector.reset_detector()
@@ -159,11 +164,13 @@ class DetectionThread(Thread):
 
             motion_detection = self._motion_detector.detect(frame=frame, detection_areas=self._motion_detection_areas)
 
-            for motion_detection_area in self._motion_detection_areas:
-                draw_on_frame(frame, motion_detection_area, (200, 100, 0))
+            if debug_draw_detection_boxes_on_video:
+                for motion_detection_area in self._motion_detection_areas:
+                    draw_on_frame(frame, motion_detection_area, (200, 100, 0))
 
             if len(motion_detection) == 0:
-                # cv2.imshow('output', frame)
+                if debug_display_video_window:
+                    cv2.imshow('debug', frame)
                 continue
 
             movement_bounding_boxes, _ = motion_detection
@@ -175,11 +182,13 @@ class DetectionThread(Thread):
             object_detection: list[list[tuple]] = self._object_detector.detect(frame=frame,
                                                                                interest_areas=movement_bounding_boxes)
 
-            for movement_bounding_box in movement_bounding_boxes:
-                draw_on_frame(frame, movement_bounding_box)
+            if debug_draw_detection_boxes_on_video:
+                for movement_bounding_box in movement_bounding_boxes:
+                    draw_on_frame(frame, movement_bounding_box)
 
             if len(object_detection) == 0:
-                # cv2.imshow('output', frame)
+                if debug_display_video_window:
+                    cv2.imshow('debug', frame)
                 continue
 
             for object_detections_in_sub_frame in object_detection:
@@ -192,7 +201,9 @@ class DetectionThread(Thread):
 
                 for detection_result_of_one_object in object_detections_in_sub_frame:
                     object_type, object_confidence, object_bounding_box = detection_result_of_one_object
-                    draw_on_frame(frame, object_bounding_box, (0, 125, 0), object_type, object_confidence)
+
+                    if debug_draw_detection_boxes_on_video:
+                        draw_on_frame(frame, object_bounding_box, (0, 125, 0), object_type, object_confidence)
 
             object_to_notify = get_object_with_highest_weight_and_area(object_detection,
                                                                        self._objects_to_detect_with_weights)
@@ -200,12 +211,15 @@ class DetectionThread(Thread):
             print('object_with_highest_weight_and_area:', object_to_notify)
 
             if len(object_to_notify) == 0:
-                # cv2.imshow('output', frame)
+                if debug_display_video_window:
+                    cv2.imshow('debug', frame)
                 continue
 
             object_to_notify_type, object_to_notify_confidence, object_to_notify_bounding_box = object_to_notify
-            draw_on_frame(frame, object_to_notify_bounding_box, (0, 100, 200), object_to_notify_type,
-                          object_to_notify_confidence, (0, 100, 200))
+
+            if debug_draw_detection_boxes_on_video:
+                draw_on_frame(frame, object_to_notify_bounding_box, (0, 100, 200), object_to_notify_type,
+                              object_to_notify_confidence, (0, 100, 200))
 
             print(object_to_notify_type, 'DETECTED')
             print('previous_object_type_detected:', previous_object_type_detected)
@@ -233,7 +247,8 @@ class DetectionThread(Thread):
             time_when_object_was_detected = time.time()
             previous_object_type_detected = object_to_notify_type
 
-            # cv2.imshow('output', frame)
+            if debug_display_video_window:
+                cv2.imshow('debug', frame)
 
     def stop(self):
         self._running = False
