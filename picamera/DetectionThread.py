@@ -2,6 +2,7 @@ from threading import Thread
 import os
 import time
 import cv2
+from typing import Any
 from picamera.motionDetection import MotionDetector
 from picamera.objectDetection import ObjectDetector
 from picamera.detection_typing import BoundingBox
@@ -64,6 +65,12 @@ class DetectionThread(Thread):
         self._running = True
         self._picam = picam
 
+        self._configuration: dict[str, Any] = {
+            'recording_phase_duration_in_seconds': 8,
+            'max_recording_phase_duration_in_seconds': 120,
+            'checking_phase_duration_in_seconds': 60,
+        }
+
         self._objects_to_detect_with_weights = {
             'car': 5,
             'motorcycle': 4,
@@ -119,14 +126,10 @@ class DetectionThread(Thread):
     def run(self):
         if debug_display_video_window:
             cv2.startWindowThread()
-            cv2.namedWindow("debug", cv2.WINDOW_NORMAL)
+            cv2.namedWindow('debug', cv2.WINDOW_NORMAL)
 
         self._motion_detector.reset_detector()
         self._object_detector.reset_detector()
-
-        RECORDING_PHASE_DURATION_IN_SECONDS = 8
-        MAX_RECORDING_PHASE_DURATION_IN_SECONDS = 120
-        CHECKING_PHASE_DURATION_IN_SECONDS = 60
 
         previous_object_type_detected = None
         time_when_object_was_detected = time.time()
@@ -142,8 +145,8 @@ class DetectionThread(Thread):
                 seconds_elapsed_since_object_was_detected = current_time - time_when_object_was_detected
                 seconds_elapsed_since_recording_phase_started = current_time - time_when_recording_phase_started
                 if (
-                        seconds_elapsed_since_object_was_detected >= RECORDING_PHASE_DURATION_IN_SECONDS
-                        or seconds_elapsed_since_recording_phase_started >= MAX_RECORDING_PHASE_DURATION_IN_SECONDS
+                        seconds_elapsed_since_object_was_detected >= self._configuration['recording_phase_duration_in_seconds']
+                        or seconds_elapsed_since_recording_phase_started >= self._configuration['max_recording_phase_duration_in_seconds']
                 ):
                     self._picam.stop_recording()
                     print('stop recording')
@@ -157,7 +160,7 @@ class DetectionThread(Thread):
                 current_time = time.time()
                 seconds_elapsed_since_checking_phase_started = current_time - time_when_checking_phase_started
 
-                if seconds_elapsed_since_checking_phase_started >= CHECKING_PHASE_DURATION_IN_SECONDS:
+                if seconds_elapsed_since_checking_phase_started >= self._configuration['checking_phase_duration_in_seconds']:
                     is_in_checking_phase = False
                     print('-------------- leaving checking phase')
                     previous_object_type_detected = None
