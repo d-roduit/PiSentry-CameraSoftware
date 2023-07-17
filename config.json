@@ -1,0 +1,25 @@
+{
+    "user": {
+        "token": "mytoken"
+    },
+    "camera": {
+        "id": "1"
+    },
+    "detection": {
+        "startTime": "06:00",
+        "endTime": "21:45",
+        "areas": [],
+        "objectTypes": {
+            "car": 5,
+            "motorcycle": 4,
+            "bicycle": 3,
+            "person": 2,
+            "cat": 1,
+            "dog": 1
+        },
+        "recordingsFolderPath": "/home/droduit/Desktop/SambaShare"
+    },
+    "notification": {
+        "enabled": true
+    }
+}
