@@ -1,5 +1,6 @@
 from threading import Thread
 import os
+import datetime
 import time
 import cv2
 from typing import Any
@@ -11,6 +12,16 @@ from ConfigManager import configManager
 # DEBUG VARIABLES
 debug_display_video_window = False
 debug_draw_detection_boxes_on_video = False
+
+def time_in_range(time_to_check, start_time, end_time) -> bool:
+    """Return true if time_to_check is in the range [start_time, end_time]"""
+    if not isinstance(time_to_check, datetime.time) or not isinstance(start_time, datetime.time) or not isinstance(end_time, datetime.time):
+        raise ValueError('All function parameters must be of type `datetime.time`')
+
+    if start_time <= end_time:
+        return start_time <= time_to_check <= end_time
+    else:
+        return start_time <= time_to_check or time_to_check <= end_time
 
 def draw_on_frame(frame, bounding_box, bounding_box_color=(0, 255, 0), object_type=None, confidence=None,
                   text_color=(0, 125, 0)) -> None:
@@ -103,7 +114,35 @@ class DetectionThread(Thread):
             min_frames_for_detection=5
         )
 
+        try:
+            self._detection_start_time = datetime.datetime.strptime(configManager.config.detection.startTime, '%H:%M').time()
+            self._detection_end_time = datetime.datetime.strptime(configManager.config.detection.endTime, '%H:%M').time()
+        except:
+            raise ValueError('start time and end time strings must be formatted as follows: hours must have two digits and go from 00 to 23, minutes must have two digits and go from 00 to 59.') from None
+
     def run(self):
+        while self._running:
+            self._wait_for_detection_time_range()
+            self._run_detection() # run the motion and object detection code
+
+
+    def _wait_for_detection_time_range(self):
+        print('entering _wait_for_detection_time_range()')
+        current_time = datetime.datetime.now().time()
+        print('current_time:', current_time)
+
+        while not time_in_range(current_time, self._detection_start_time, self._detection_end_time):
+            print('starting to sleep...')
+            seconds_to_wait_before_next_check = 10
+            time.sleep(seconds_to_wait_before_next_check)
+            current_time = datetime.datetime.now().time()
+            print('after sleeping... current_time now:', current_time)
+
+        print('leaving _wait_for_detection_time_range()')
+
+    def _run_detection(self):
+        print('entering _run_detection()')
+
         if debug_display_video_window:
             cv2.startWindowThread()
             cv2.namedWindow('debug', cv2.WINDOW_NORMAL)
@@ -119,11 +158,21 @@ class DetectionThread(Thread):
         is_in_checking_phase = False  # Checking if the last object detected is still there
 
         # Grab the array representing the frame
-        while self._running and (frame := self._picam.get_frame()) is not None:
+        while (frame := self._picam.get_frame()) is not None:
+            if not is_in_recording_phase:
+                current_time = datetime.datetime.now().time()
+                print('checking if time_in_range. current_time', current_time)
+
+                if not time_in_range(current_time, self._detection_start_time, self._detection_end_time):
+                    print('\nleaving _run_detection(). current_time:', current_time)
+                    break
+
+
             if is_in_recording_phase:
                 current_time = time.time()
                 seconds_elapsed_since_object_was_detected = current_time - time_when_object_was_detected
                 seconds_elapsed_since_recording_phase_started = current_time - time_when_recording_phase_started
+
                 if (
                         seconds_elapsed_since_object_was_detected >= self._configuration['recording_phase_duration_in_seconds']
                         or seconds_elapsed_since_recording_phase_started >= self._configuration['max_recording_phase_duration_in_seconds']
