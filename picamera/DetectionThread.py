@@ -6,6 +6,7 @@ from typing import Any
 from picamera.motionDetection import MotionDetector
 from picamera.objectDetection import ObjectDetector
 from picamera.detection_typing import BoundingBox
+from ConfigManager import configManager
 
 # DEBUG VARIABLES
 debug_display_video_window = False
@@ -71,27 +72,6 @@ class DetectionThread(Thread):
             'checking_phase_duration_in_seconds': 60,
         }
 
-        self._objects_to_detect_with_weights = {
-            'car': 5,
-            'motorcycle': 4,
-            'bicycle': 3,
-            'person': 2,
-            'cat': 1,
-            'dog': 1
-        }
-
-        self._motion_detection_areas: tuple[BoundingBox, ...] = (
-            # (800, 50, 1120, 200),
-            # (800, 350, 1120, 300),
-            #
-            # (250, 0, 200, 200),
-            # (450, 0, 725, 1080),
-            # (0, 500, 450, 1080),
-            # (1175, 300, 350, 1080),
-            # (1525, 350, 250, 1080),
-            # (1775, 400, 250, 300),
-        )
-
         self._motion_detector = MotionDetector()
         self._motion_detector.configure_detection(
             delta_threshold=9,
@@ -119,7 +99,7 @@ class DetectionThread(Thread):
         self._object_detector.configure_detection(
             confidence_threshold=0.65,
             non_maximum_suppression_threshold=0.1,
-            objects_to_detect=list(self._objects_to_detect_with_weights.keys()),
+            objects_to_detect=list(configManager.config.detection.objectTypes.keys()),
             min_frames_for_detection=5
         )
 
@@ -165,10 +145,10 @@ class DetectionThread(Thread):
                     print('-------------- leaving checking phase')
                     previous_object_type_detected = None
 
-            motion_detection = self._motion_detector.detect(frame=frame, detection_areas=self._motion_detection_areas)
+            motion_detection = self._motion_detector.detect(frame=frame, detection_areas=configManager.config.detection.areas)
 
             if debug_draw_detection_boxes_on_video:
-                for motion_detection_area in self._motion_detection_areas:
+                for motion_detection_area in configManager.config.detection.areas:
                     draw_on_frame(frame, motion_detection_area, (200, 100, 0))
 
             if len(motion_detection) == 0:
@@ -209,7 +189,7 @@ class DetectionThread(Thread):
                         draw_on_frame(frame, object_bounding_box, (0, 125, 0), object_type, object_confidence)
 
             object_to_notify = get_object_with_highest_weight_and_area(object_detection,
-                                                                       self._objects_to_detect_with_weights)
+                                                                       configManager.config.detection.objectTypes)
 
             print('object_with_highest_weight_and_area:', object_to_notify)
 
@@ -241,8 +221,10 @@ class DetectionThread(Thread):
                 print('-------------- entering recording phase')
                 self._picam.start_recording()
                 print('start recording')
+
                 # SEND NOTIFICATION OF DETECTION
-                print('SENDING NOTIFICATION OF DETECTION FOR OJBECT', object_to_notify_type)
+                if configManager.config.notification.enabled:
+                    print('SENDING NOTIFICATION OF DETECTION FOR OJBECT', object_to_notify_type)
 
             elif is_in_checking_phase and object_to_notify_type == previous_object_type_detected:
                 time_when_checking_phase_started = time.time()

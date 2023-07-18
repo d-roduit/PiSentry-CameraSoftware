@@ -5,9 +5,13 @@ from picamera.DetectionThread import DetectionThread
 from datetime import datetime
 import subprocess
 import os
+from ConfigManager import configManager
 
 
 def from_h264_create_file(h264_recording_filepath: str, new_file_extension: str):
+    if not os.path.isfile(h264_recording_filepath):
+        raise ValueError('The path must point to a file. Received:', h264_recording_filepath)
+
     h264_extension = '.h264'
 
     if not h264_recording_filepath.endswith(h264_extension):
@@ -67,7 +71,16 @@ class PiCam:
 
     def start_recording(self):
         try:
-            self._h264_recording_filepath = f'./recording_{datetime.now().strftime("%d-%m-%Y_%H-%M-%S")}.h264'
+            if not os.path.isdir(configManager.config.detection.recordingsFolderPath):
+                raise ValueError('The recordings folder path must point to a directory. Received:', configManager.config.detection.recordingsFolderPath)
+
+            if not os.path.isabs(configManager.config.detection.recordingsFolderPath):
+                raise ValueError('The recordings folder path must be an absolute path. Received:', configManager.config.detection.recordingsFolderPath)
+
+            recording_filename = f'recording_{datetime.now().strftime("%d-%m-%Y_%H-%M-%S")}.h264'
+
+            self._h264_recording_filepath = os.path.join(configManager.config.detection.recordingsFolderPath, recording_filename)
+
             self._recordingOutput.fileoutput = self._h264_recording_filepath
             self._recordingOutput.start()
         except Exception as exception:
