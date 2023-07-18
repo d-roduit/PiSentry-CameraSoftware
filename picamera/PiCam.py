@@ -55,7 +55,7 @@ class PiCam:
 
         self._h264_recording_filepath = ''
 
-        self._detection_thread = DetectionThread(self)
+        self._detection_thread = None
 
     def start_streaming(self):
         try:
@@ -105,15 +105,18 @@ class PiCam:
         return self._picam2.capture_array()
 
     def start_detection(self):
-        if not self.is_detection_running:
-            self._detection_thread = DetectionThread(self)
-            self._detection_thread.start()
+        if self._detection_thread is not None and self.is_detection_running:
+            return
+        self._detection_thread = DetectionThread(self)
+        self._detection_thread.start()
     def stop_detection(self):
+        if self._detection_thread is None or not self.is_detection_running:
+            return
         self._detection_thread.stop()
         self._detection_thread.join()
 
     @property
     def is_detection_running(self):
-        return self._detection_thread.is_alive()
+        return self._detection_thread.is_alive() if self._detection_thread is not None else False
 
 picam = PiCam()
