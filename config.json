@@ -6,8 +6,8 @@
         "id": "1"
     },
     "detection": {
-        "startTime": "06:00",
-        "endTime": "21:45",
+        "startTime": "07:00",
+        "endTime": "21:30",
         "areas": [],
         "objectTypes": {
             "car": 5,
