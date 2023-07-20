@@ -271,7 +271,8 @@ class DetectionThread(Thread):
                 print('-------------- entering recording phase')
 
                 print('start recording')
-                recording_filename = f'recording_{datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S")}.h264'
+                recording_datetime = datetime.datetime.now()
+                recording_filename = f'recording_{recording_datetime.strftime("%d-%m-%Y_%H-%M-%S")}.h264'
                 self._picam.start_recording(recording_filename)
 
                 backend_url = 'http://192.168.1.211:7070'
@@ -283,7 +284,7 @@ class DetectionThread(Thread):
                     detection_session_id = detection_session_response_json_data['session_id']
 
                     create_recording_response = requests.post(backend_url + '/v1/recordings', json={
-                        'recorded_at': datetime.datetime.now().isoformat(),
+                        'recorded_at': recording_datetime.isoformat(),
                         'filename': recording_filename,
                         'detection_session_id': detection_session_id,
                         'camera_id': configManager.config.camera.id
