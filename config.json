@@ -3,7 +3,7 @@
         "token": "mytoken"
     },
     "camera": {
-        "id": "1"
+        "id": 1
     },
     "detection": {
         "startTime": "07:00",
