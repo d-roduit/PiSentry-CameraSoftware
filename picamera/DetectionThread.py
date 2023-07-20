@@ -278,7 +278,8 @@ class DetectionThread(Thread):
                 backend_url = 'http://192.168.1.211:7070'
 
                 try:
-                    create_detection_session_response = requests.post(backend_url + '/v1/detection-sessions', json={'user_id': 1})
+                    create_detection_session_response = requests.post(backend_url + '/v1/detection-sessions',
+                                                                      json={'user_id': 1}, timeout=5)
                     create_detection_session_response.raise_for_status()
                     detection_session_response_json_data = create_detection_session_response.json()
                     detection_session_id = detection_session_response_json_data['session_id']
@@ -288,7 +289,7 @@ class DetectionThread(Thread):
                         'filename': recording_filename,
                         'detection_session_id': detection_session_id,
                         'camera_id': configManager.config.camera.id
-                    })
+                    }, timeout=5)
                     create_recording_response.raise_for_status()
                 except requests.exceptions.HTTPError:
                     print('HTTPError exception caught. Could not create detection session and recording')
