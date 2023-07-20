@@ -274,6 +274,24 @@ class DetectionThread(Thread):
                 recording_filename = f'recording_{datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S")}.h264'
                 self._picam.start_recording(recording_filename)
 
+                backend_url = 'http://192.168.1.211:7070'
+
+                try:
+                    create_detection_session_response = requests.post(backend_url + '/v1/detection-sessions', json={'user_id': 1})
+                    create_detection_session_response.raise_for_status()
+                    detection_session_response_json_data = create_detection_session_response.json()
+                    detection_session_id = detection_session_response_json_data['session_id']
+
+                    create_recording_response = requests.post(backend_url + '/v1/recordings', json={
+                        'recorded_at': datetime.datetime.now().isoformat(),
+                        'filename': recording_filename,
+                        'detection_session_id': detection_session_id,
+                        'camera_id': configManager.config.camera.id
+                    })
+                    create_recording_response.raise_for_status()
+                except requests.exceptions.HTTPError:
+                    print('HTTPError exception caught. Could not create detection session and recording')
+
                 # SEND NOTIFICATION OF DETECTION
                 if configManager.config.notification.enabled:
                     print('SENDING NOTIFICATION OF DETECTION FOR OJBECT', object_to_notify_type)
