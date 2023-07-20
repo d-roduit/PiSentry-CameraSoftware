@@ -3,6 +3,7 @@ import os
 import datetime
 import time
 import cv2
+import requests
 from typing import Any
 from picamera.motionDetection import MotionDetector
 from picamera.objectDetection import ObjectDetector
