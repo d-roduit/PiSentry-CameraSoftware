@@ -2,7 +2,6 @@ from picamera2 import Picamera2
 from picamera2.encoders import H264Encoder
 from picamera2.outputs import FfmpegOutput, CircularOutput
 from picamera.DetectionThread import DetectionThread
-from datetime import datetime
 import subprocess
 import os
 from ConfigManager import configManager
@@ -54,7 +53,7 @@ class PiCam:
     def stop_streaming(self):
         self._streamingOutput.stop()
 
-    def start_recording(self):
+    def start_recording(self, recording_filename):
         if not os.path.isdir(configManager.config.detection.recordingsFolderPath):
             raise ValueError('The recordings folder path must point to a directory. Received:',
                              configManager.config.detection.recordingsFolderPath)
@@ -62,8 +61,6 @@ class PiCam:
         if not os.path.isabs(configManager.config.detection.recordingsFolderPath):
             raise ValueError('The recordings folder path must be an absolute path. Received:',
                              configManager.config.detection.recordingsFolderPath)
-
-        recording_filename = f'recording_{datetime.now().strftime("%d-%m-%Y_%H-%M-%S")}.h264'
 
         self._h264_recording_filepath = os.path.join(configManager.config.detection.recordingsFolderPath,
                                                      recording_filename)

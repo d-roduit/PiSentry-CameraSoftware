@@ -268,8 +268,10 @@ class DetectionThread(Thread):
                 is_in_recording_phase = True
                 time_when_recording_phase_started = time.time()
                 print('-------------- entering recording phase')
-                self._picam.start_recording()
+
                 print('start recording')
+                recording_filename = f'recording_{datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S")}.h264'
+                self._picam.start_recording(recording_filename)
 
                 # SEND NOTIFICATION OF DETECTION
                 if configManager.config.notification.enabled:
