@@ -291,8 +291,8 @@ class DetectionThread(Thread):
                         'camera_id': configManager.config.camera.id
                     }, timeout=5)
                     create_recording_response.raise_for_status()
-                except requests.exceptions.HTTPError:
-                    print('HTTPError exception caught. Could not create detection session and recording')
+                except requests.exceptions.RequestException as e:
+                    print('Request exception caught. Could not create detection session and recording. Exception:', e)
 
                 # SEND NOTIFICATION OF DETECTION
                 if configManager.config.notification.enabled:
