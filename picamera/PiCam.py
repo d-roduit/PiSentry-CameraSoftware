@@ -62,8 +62,10 @@ class PiCam:
             raise ValueError('The recordings folder path must be an absolute path. Received:',
                              configManager.config.detection.recordingsFolderPath)
 
+        file_extension = '.h264'
+
         self._h264_recording_filepath = os.path.join(configManager.config.detection.recordingsFolderPath,
-                                                     recording_filename)
+                                                     f'{recording_filename}{file_extension}')
 
         self._recordingOutput.fileoutput = self._h264_recording_filepath
         self._recordingOutput.start()

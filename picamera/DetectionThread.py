@@ -273,7 +273,7 @@ class DetectionThread(Thread):
 
                 print('start recording')
                 recording_datetime = datetime.datetime.now()
-                recording_filename = f'recording_{recording_datetime.strftime("%d-%m-%Y_%H-%M-%S")}.h264'
+                recording_filename = f'recording_{recording_datetime.strftime("%d-%m-%Y_%H-%M-%S")}'
                 self._picam.start_recording(recording_filename)
 
                 try:
@@ -285,7 +285,7 @@ class DetectionThread(Thread):
 
                     create_recording_response = requests.post(backend_url + '/v1/recordings', json={
                         'recorded_at': recording_datetime.isoformat(),
-                        'filename': recording_filename,
+                        'filename': f'{recording_filename}.mp4',
                         'detection_session_id': detection_session_id,
                         'camera_id': configManager.config.camera.id
                     }, timeout=5)
