@@ -9,6 +9,7 @@ from picamera.motionDetection import MotionDetector
 from picamera.objectDetection import ObjectDetector
 from picamera.detection_typing import BoundingBox
 from ConfigManager import configManager
+from urls import backend_url
 
 # DEBUG VARIABLES
 debug_display_video_window = False
@@ -274,8 +275,6 @@ class DetectionThread(Thread):
                 recording_datetime = datetime.datetime.now()
                 recording_filename = f'recording_{recording_datetime.strftime("%d-%m-%Y_%H-%M-%S")}.h264'
                 self._picam.start_recording(recording_filename)
-
-                backend_url = 'http://192.168.1.211:7070'
 
                 try:
                     create_detection_session_response = requests.post(backend_url + '/v1/detection-sessions',
