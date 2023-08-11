@@ -9,7 +9,7 @@ from picamera.motionDetection import MotionDetector
 from picamera.objectDetection import ObjectDetector
 from picamera.detection_typing import BoundingBox
 from ConfigManager import configManager
-from urls import backend_url
+from urls import backend_api_url
 
 # DEBUG VARIABLES
 debug_display_video_window = False
@@ -278,7 +278,7 @@ class DetectionThread(Thread):
 
                 try:
                     create_detection_session_response = requests.post(
-                        backend_url + '/v1/detection-sessions',
+                        backend_api_url + '/v1/detection-sessions',
                         headers={"Authorization": configManager.config.user.token},
                         timeout=5
                     )
@@ -287,7 +287,7 @@ class DetectionThread(Thread):
                     detection_session_id = detection_session_response_json_data['session_id']
 
                     create_recording_response = requests.post(
-                        backend_url + '/v1/recordings',
+                        backend_api_url + '/v1/recordings',
                         json={
                             'recorded_at': recording_datetime.isoformat(),
                             'filename': f'{recording_filename}.mp4',
