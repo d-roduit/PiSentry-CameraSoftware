@@ -277,18 +277,25 @@ class DetectionThread(Thread):
                 self._picam.start_recording(recording_filename)
 
                 try:
-                    create_detection_session_response = requests.post(backend_url + '/v1/detection-sessions',
-                                                                      json={'user_id': 1}, timeout=5)
+                    create_detection_session_response = requests.post(
+                        backend_url + '/v1/detection-sessions',
+                        headers={"Authorization": configManager.config.user.token},
+                        timeout=5
+                    )
                     create_detection_session_response.raise_for_status()
                     detection_session_response_json_data = create_detection_session_response.json()
                     detection_session_id = detection_session_response_json_data['session_id']
 
-                    create_recording_response = requests.post(backend_url + '/v1/recordings', json={
-                        'recorded_at': recording_datetime.isoformat(),
-                        'filename': f'{recording_filename}.mp4',
-                        'detection_session_id': detection_session_id,
-                        'camera_id': configManager.config.camera.id
-                    }, timeout=5)
+                    create_recording_response = requests.post(
+                        backend_url + '/v1/recordings',
+                        json={
+                            'recorded_at': recording_datetime.isoformat(),
+                            'filename': f'{recording_filename}.mp4',
+                            'detection_session_id': detection_session_id,
+                            'camera_id': configManager.config.camera.id
+                        },
+                        headers={"Authorization": configManager.config.user.token},
+                        timeout=5)
                     create_recording_response.raise_for_status()
                 except requests.exceptions.RequestException as e:
                     print('Request exception caught. Could not create detection session and recording. Exception:', e)
