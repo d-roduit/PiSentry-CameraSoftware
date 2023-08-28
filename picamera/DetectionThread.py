@@ -78,6 +78,8 @@ class DetectionThread(Thread):
         Thread.__init__(self)
         self._running = True
         self._picam = picam
+        self._http_session = requests.Session()
+        self._http_session.headers = { 'Authorization': configManager.config.user.token }
 
         self._configuration: dict[str, Any] = {
             'recording_phase_duration_in_seconds': 8,
@@ -123,9 +125,12 @@ class DetectionThread(Thread):
             raise ValueError('start time and end time strings must be formatted as follows: hours must have two digits and go from 00 to 23, minutes must have two digits and go from 00 to 59.') from None
 
     def run(self):
-        while self._running:
-            self._wait_for_detection_time_range()
-            self._run_detection() # run the motion and object detection code
+        try:
+            while self._running:
+                self._wait_for_detection_time_range()
+                self._run_detection() # run the motion and object detection code
+        except BaseException:
+            self.stop()
 
 
     def _wait_for_detection_time_range(self):
@@ -168,7 +173,6 @@ class DetectionThread(Thread):
                 if not time_in_range(current_time, self._detection_start_time, self._detection_end_time):
                     print('\nleaving _run_detection(). current_time:', current_time)
                     break
-
 
             if is_in_recording_phase:
                 current_time = time.time()
@@ -277,24 +281,22 @@ class DetectionThread(Thread):
                 self._picam.start_recording(recording_filename)
 
                 try:
-                    create_detection_session_response = requests.post(
+                    create_detection_session_response = self._http_session.post(
                         backend_api_url + '/v1/detection-sessions',
-                        headers={"Authorization": configManager.config.user.token},
                         timeout=5
                     )
                     create_detection_session_response.raise_for_status()
                     detection_session_response_json_data = create_detection_session_response.json()
                     detection_session_id = detection_session_response_json_data['session_id']
 
-                    create_recording_response = requests.post(
+                    create_recording_response = self._http_session.post(
                         backend_api_url + '/v1/recordings',
                         json={
                             'recorded_at': recording_datetime.isoformat(),
                             'filename': f'{recording_filename}.mp4',
                             'detection_session_id': detection_session_id,
-                            'camera_id': configManager.config.camera.id
+                            'camera_id': configManager.config.camera.id,
                         },
-                        headers={"Authorization": configManager.config.user.token},
                         timeout=5)
                     create_recording_response.raise_for_status()
                 except requests.exceptions.RequestException as e:
@@ -314,4 +316,5 @@ class DetectionThread(Thread):
                 cv2.imshow('debug', frame)
 
     def stop(self):
+        self._http_session.close()
         self._running = False
