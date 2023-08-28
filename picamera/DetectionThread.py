@@ -294,6 +294,7 @@ class DetectionThread(Thread):
                         json={
                             'recorded_at': recording_datetime.isoformat(),
                             'filename': f'{recording_filename}.mp4',
+                            'detected_object_type': object_to_notify_type,
                             'detection_session_id': detection_session_id,
                             'camera_id': configManager.config.camera.id,
                         },
