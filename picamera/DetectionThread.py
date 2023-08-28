@@ -1,4 +1,4 @@
-from threading import Thread
+import threading
 import os
 import datetime
 import time
@@ -73,9 +73,9 @@ def get_object_with_highest_weight_and_area(all_detections, objects_to_detect_wi
 
     return output
 
-class DetectionThread(Thread):
+class DetectionThread(threading.Thread):
     def __init__(self, picam):
-        Thread.__init__(self)
+        threading.Thread.__init__(self)
         self._running = True
         self._picam = picam
         self._http_session = requests.Session()
@@ -280,32 +280,7 @@ class DetectionThread(Thread):
                 recording_filename = f'recording_{recording_datetime.strftime("%d-%m-%Y_%H-%M-%S")}'
                 self._picam.start_recording(recording_filename)
 
-                try:
-                    create_detection_session_response = self._http_session.post(
-                        backend_api_url + '/v1/detection-sessions',
-                        timeout=5
-                    )
-                    create_detection_session_response.raise_for_status()
-                    detection_session_response_json_data = create_detection_session_response.json()
-                    detection_session_id = detection_session_response_json_data['session_id']
-
-                    create_recording_response = self._http_session.post(
-                        backend_api_url + '/v1/recordings',
-                        json={
-                            'recorded_at': recording_datetime.isoformat(),
-                            'filename': f'{recording_filename}.mp4',
-                            'detected_object_type': object_to_notify_type,
-                            'detection_session_id': detection_session_id,
-                            'camera_id': configManager.config.camera.id,
-                        },
-                        timeout=5)
-                    create_recording_response.raise_for_status()
-                except requests.exceptions.RequestException as e:
-                    print('Request exception caught. Could not create detection session and recording. Exception:', e)
-
-                # SEND NOTIFICATION OF DETECTION
-                if configManager.config.notification.enabled:
-                    print('SENDING NOTIFICATION OF DETECTION FOR OJBECT', object_to_notify_type)
+                threading.Thread(target=self.save_recording_and_notify_user, args=(recording_datetime, recording_filename, object_to_notify_type)).start()
 
             elif is_in_checking_phase and object_to_notify_type == previous_object_type_detected:
                 time_when_checking_phase_started = time.time()
@@ -315,6 +290,34 @@ class DetectionThread(Thread):
 
             if debug_display_video_window:
                 cv2.imshow('debug', frame)
+
+    def save_recording_and_notify_user(self, recording_datetime, recording_filename, object_to_notify_type):
+        try:
+            create_detection_session_response = self._http_session.post(
+                backend_api_url + '/v1/detection-sessions',
+                timeout=5
+            )
+            create_detection_session_response.raise_for_status()
+            detection_session_response_json_data = create_detection_session_response.json()
+            detection_session_id = detection_session_response_json_data['session_id']
+
+            create_recording_response = self._http_session.post(
+                backend_api_url + '/v1/recordings',
+                json={
+                    'recorded_at': recording_datetime.isoformat(),
+                    'filename': f'{recording_filename}.mp4',
+                    'detected_object_type': object_to_notify_type,
+                    'detection_session_id': detection_session_id,
+                    'camera_id': configManager.config.camera.id,
+                },
+                timeout=5)
+            create_recording_response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            print('Request exception caught. Could not create detection session and recording. Exception:', e)
+
+        # SEND NOTIFICATION OF DETECTION
+        if configManager.config.notification.enabled:
+            print('SENDING NOTIFICATION OF DETECTION FOR OJBECT', object_to_notify_type)
 
     def stop(self):
         self._http_session.close()
