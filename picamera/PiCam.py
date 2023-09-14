@@ -54,13 +54,11 @@ class PiCam:
         self._streamingOutput.stop()
 
     def start_recording(self, recording_filename):
-        if not os.path.isdir(configManager.config.detection.recordingsFolderPath):
-            raise ValueError('The recordings folder path must point to a directory. Received:',
-                             configManager.config.detection.recordingsFolderPath)
-
         if not os.path.isabs(configManager.config.detection.recordingsFolderPath):
             raise ValueError('The recordings folder path must be an absolute path. Received:',
                              configManager.config.detection.recordingsFolderPath)
+
+        os.makedirs(name=configManager.config.detection.recordingsFolderPath, exist_ok=True)
 
         file_extension = '.h264'
 
