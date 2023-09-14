@@ -73,6 +73,65 @@ def get_object_with_highest_weight_and_area(all_detections, objects_to_detect_wi
 
     return output
 
+def write_recording_thumbnail_to_file(frame, filename, file_extension):
+    if not os.path.isabs(configManager.config.detection.recordingsFolderPath):
+        raise ValueError(
+            'The recordings folder path must be an absolute path. Received:',
+            configManager.config.detection.recordingsFolderPath
+        )
+
+    recordings_thumbnails_folderpath = os.path.join(
+        configManager.config.detection.recordingsFolderPath,
+        'thumbnails',
+    )
+
+    os.makedirs(name=recordings_thumbnails_folderpath, exist_ok=True)
+
+    recording_thumbnail_filename = f'{filename}.{file_extension}'
+    recording_thumbnail_filepath = os.path.join(recordings_thumbnails_folderpath, recording_thumbnail_filename)
+
+    cv2.imwrite(recording_thumbnail_filepath, frame)
+
+
+def extract_square_thumbnail(frame, object_bounding_box):
+    # Computer square side size
+    object_box_x, object_box_y, object_box_width, object_box_height = object_bounding_box
+
+    object_box_biggest_side_size = object_box_width if object_box_width > object_box_height else object_box_height
+    square_side_size = object_box_biggest_side_size + 20 # padding of 10px on each side to fully encompass the object
+
+    # Make sure that square is not bigger than frame width / height itself
+    frame_width = len(frame[0]) - 1
+    frame_height = len(frame) - 1
+
+    square_side_size = square_side_size if square_side_size <= frame_width else frame_width
+    square_side_size = square_side_size if square_side_size <= frame_height else frame_height
+
+    # Place square in frame
+    object_box_center_x = object_box_x + object_box_width // 2
+    object_box_center_y = object_box_y + object_box_height // 2
+    square_side_half_size = square_side_size // 2
+    top_left_x = object_box_center_x - square_side_half_size
+    top_left_y = object_box_center_y - square_side_half_size
+    bottom_right_x = object_box_center_x + square_side_half_size
+    bottom_right_y = object_box_center_y + square_side_half_size
+
+    if top_left_x < 0: # if exceeds before the frame on the left
+        top_left_x = 0
+        bottom_right_x = square_side_size
+    elif bottom_right_x > frame_width: # if exceeds beyond the frame on the right
+        bottom_right_x = frame_width
+        top_left_x = frame_width - square_side_size
+
+    if top_left_y < 0: # if exceeds above the frame at the top
+        top_left_y = 0
+        bottom_right_y = square_side_size
+    elif bottom_right_y > frame_height: # if exceeds below the frame at the bottom
+        bottom_right_y = frame_height
+        top_left_y = frame_height - square_side_size
+
+    return frame[top_left_y:bottom_right_y, top_left_x:bottom_right_x]
+
 class DetectionThread(threading.Thread):
     def __init__(self, picam):
         threading.Thread.__init__(self)
@@ -280,7 +339,16 @@ class DetectionThread(threading.Thread):
                 recording_filename = f'recording_{recording_datetime.strftime("%d-%m-%Y_%H-%M-%S")}'
                 self._picam.start_recording(recording_filename)
 
-                threading.Thread(target=self.save_recording_and_notify_user, args=(recording_datetime, recording_filename, object_to_notify_type)).start()
+                threading.Thread(
+                    target=self.save_recording_and_notify_user,
+                    args=(
+                        frame,
+                        object_to_notify_bounding_box,
+                        recording_datetime,
+                        recording_filename,
+                        object_to_notify_type
+                    )
+                ).start()
 
             elif is_in_checking_phase and object_to_notify_type == previous_object_type_detected:
                 time_when_checking_phase_started = time.time()
@@ -291,7 +359,13 @@ class DetectionThread(threading.Thread):
             if debug_display_video_window:
                 cv2.imshow('debug', frame)
 
-    def save_recording_and_notify_user(self, recording_datetime, recording_filename, object_to_notify_type):
+    def save_recording_and_notify_user(self, frame, object_bounding_box, recording_datetime, recording_filename, object_to_notify_type):
+        try:
+            thumbnail_subframe = extract_square_thumbnail(frame, object_bounding_box)
+            write_recording_thumbnail_to_file(thumbnail_subframe, recording_filename, 'jpg')
+        except Exception as e:
+            print('Exception caught. Could not create recording thumbnail. Exception:', e)
+
         try:
             create_detection_session_response = self._http_session.post(
                 backend_api_url + '/v1/detection-sessions',
