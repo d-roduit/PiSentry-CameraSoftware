@@ -366,9 +366,11 @@ class DetectionThread(threading.Thread):
                 cv2.imshow('debug', frame)
 
     def save_recording_and_notify_user(self, frame, object_bounding_box, recording_datetime, recording_filename, object_to_notify_type):
+        recording_file_extension = 'mp4'
+        thumbnail_file_extension = 'jpg'
         try:
             thumbnail_subframe = extract_square_thumbnail(frame, object_bounding_box)
-            write_recording_thumbnail_to_file(thumbnail_subframe, recording_filename, 'jpg')
+            write_recording_thumbnail_to_file(thumbnail_subframe, recording_filename, thumbnail_file_extension)
         except Exception as e:
             print('Exception caught. Could not create recording thumbnail. Exception:', e)
 
@@ -385,7 +387,8 @@ class DetectionThread(threading.Thread):
                 backend_api_url + '/v1/recordings',
                 json={
                     'recorded_at': recording_datetime.isoformat(),
-                    'filename': f'{recording_filename}.mp4',
+                    'recording_filename': f'{recording_filename}.{recording_file_extension}',
+                    'thumbnail_filename': f'{recording_filename}.{thumbnail_file_extension}',
                     'detected_object_type': object_to_notify_type,
                     'detection_session_id': detection_session_id,
                     'camera_id': configManager.config.camera.id,
@@ -402,17 +405,18 @@ class DetectionThread(threading.Thread):
         # Keep enough free space on disk to write a future recording
         self.ensure_free_space(
             free_space_to_ensure_mebibytes = 400,
-            filenames_to_keep = [f'{recording_filename}.mp4']
+            filenames_to_keep = [f'{recording_filename}.{recording_file_extension}']
         )
 
     def ensure_free_space(self, free_space_to_ensure_mebibytes, filenames_to_keep):
         recordings_folder_path = configManager.config.detection.recordingsFolderPath
-        recording_file_extension = '.mp4'
+        recording_file_extension = 'mp4'
+        thumbnail_file_extension = 'jpg'
 
         filenames_in_dir = (
             filename
             for filename in os.listdir(recordings_folder_path)
-            if filename.endswith(recording_file_extension)
+            if filename.endswith(f'.{recording_file_extension}')
                and os.path.isfile(os.path.join(recordings_folder_path, filename))
                and filename not in filenames_to_keep
         )
@@ -429,7 +433,7 @@ class DetectionThread(threading.Thread):
         while current_free_space_mebibytes < free_space_to_ensure_mebibytes and len(sorted_recordings_filenames) > 0:
             # Create paths to files
             recording_filename = sorted_recordings_filenames.pop(0)
-            thumbnail_filename = f'{recording_filename.removesuffix(recording_file_extension)}.jpg'
+            thumbnail_filename = f'{recording_filename.removesuffix(recording_file_extension)}{thumbnail_file_extension}'
 
             recording_filepath = os.path.join(recordings_folder_path, recording_filename)
             thumbnail_filepath = os.path.join(recordings_folder_path, 'thumbnails', thumbnail_filename)
@@ -450,7 +454,7 @@ class DetectionThread(threading.Thread):
                     # Remove video file entry in database
                     delete_recording_response = self._http_session.delete(
                         backend_api_url + '/v1/recordings',
-                        json={'filename': recording_filename},
+                        json={'recording_filename': recording_filename},
                         timeout=5,
                     )
                     delete_recording_response.raise_for_status()
