@@ -1,5 +1,6 @@
 import threading
 import os
+import shutil
 import datetime
 import time
 import cv2
@@ -131,6 +132,11 @@ def extract_square_thumbnail(frame, object_bounding_box):
         top_left_y = frame_height - square_side_size
 
     return frame[top_left_y:bottom_right_y, top_left_x:bottom_right_x]
+
+
+def bytes_to_mebibytes(nb_bytes: int) -> float:
+    nb_bytes_in_one_mebibyte = 1048576  # = 1024^2 OR 2^20
+    return nb_bytes / nb_bytes_in_one_mebibyte
 
 class DetectionThread(threading.Thread):
     def __init__(self, picam):
@@ -392,6 +398,74 @@ class DetectionThread(threading.Thread):
         # SEND NOTIFICATION OF DETECTION
         if configManager.config.notification.enabled:
             print('SENDING NOTIFICATION OF DETECTION FOR OJBECT', object_to_notify_type)
+
+        # Keep enough free space on disk to write a future recording
+        self.ensure_free_space(
+            free_space_to_ensure_mebibytes = 400,
+            filenames_to_keep = [f'{recording_filename}.mp4']
+        )
+
+    def ensure_free_space(self, free_space_to_ensure_mebibytes, filenames_to_keep):
+        recordings_folder_path = configManager.config.detection.recordingsFolderPath
+        recording_file_extension = '.mp4'
+
+        filenames_in_dir = (
+            filename
+            for filename in os.listdir(recordings_folder_path)
+            if filename.endswith(recording_file_extension)
+               and os.path.isfile(os.path.join(recordings_folder_path, filename))
+               and filename not in filenames_to_keep
+        )
+
+        sorted_recordings_filenames = sorted(
+            filenames_in_dir,
+            key=lambda filename: os.path.getctime(os.path.join(recordings_folder_path, filename))
+        )  # Oldest file first, newest file last
+
+        _, _, current_free_space = shutil.disk_usage(recordings_folder_path)
+
+        current_free_space_mebibytes = bytes_to_mebibytes(current_free_space)
+
+        while current_free_space_mebibytes < free_space_to_ensure_mebibytes and len(sorted_recordings_filenames) > 0:
+            # Create paths to files
+            recording_filename = sorted_recordings_filenames.pop(0)
+            thumbnail_filename = f'{recording_filename.removesuffix(recording_file_extension)}.jpg'
+
+            recording_filepath = os.path.join(recordings_folder_path, recording_filename)
+            thumbnail_filepath = os.path.join(recordings_folder_path, 'thumbnails', thumbnail_filename)
+
+            try:
+                # Remove video file from disk
+                recording_size_mebibytes = bytes_to_mebibytes(os.path.getsize(recording_filepath))
+                os.remove(recording_filepath)
+
+                # Update free space value
+                current_free_space_mebibytes += recording_size_mebibytes
+
+                # This HTTP call is placed here (and not before the video deletion or after the thumbnail deletion)
+                # because it only makes sense to execute this code if the video deletion was successful AND we want to execute
+                # it whether the thumbnail deletion is successful or not.
+                # It also has its own try...except block because even if it fails, we still want to try to delete the thumbnail.
+                try:
+                    # Remove video file entry in database
+                    delete_recording_response = self._http_session.delete(
+                        backend_api_url + '/v1/recordings',
+                        json={'filename': recording_filename},
+                        timeout=5,
+                    )
+                    delete_recording_response.raise_for_status()
+                except requests.exceptions.RequestException as e:
+                    print('Request exception caught. Could not delete recording in database. Exception:', e)
+
+                # Remove thumbnail file from disk
+                thumbnail_size_mebibytes = bytes_to_mebibytes(os.path.getsize(thumbnail_filepath))
+                os.remove(thumbnail_filepath)
+
+                # Update free space value
+                current_free_space_mebibytes += thumbnail_size_mebibytes
+            except Exception as e:
+                print('Exception caught while freeing space. Exception:', e)
+
 
     def stop(self):
         self._http_session.close()
