@@ -1,0 +1,1 @@
+from api.thumbnails.router import router

@@ -2,7 +2,7 @@ import asyncio
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api import streaming, recordings
+from api import streaming, recordings, thumbnails
 
 api = FastAPI()
 
@@ -16,6 +16,7 @@ api.add_middleware(
 
 api.include_router(streaming.router)
 api.include_router(recordings.router)
+api.include_router(thumbnails.router)
 
 if __name__ == '__main__':
     async def main():
