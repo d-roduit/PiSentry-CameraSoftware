@@ -17,7 +17,7 @@ def get_recording(recording_filename: str):
     recording_filepath = os.path.join(configManager.config.detection.recordingsFolderPath, recording_filename)
 
     if not os.path.isfile(recording_filepath):
-        return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Recording not found')
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Recording not found')
 
     return recording_filepath
 
