@@ -93,7 +93,7 @@ def get_recording(request: Request):
 @router.post('/start')
 def start_recording():
     try:
-        picam.start_recording()
+        picam.start_recording('test_recording')
         return Response(status_code=status.HTTP_200_OK)
     except:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail='Could not start recording')
