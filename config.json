@@ -7,7 +7,7 @@
     },
     "detection": {
         "startTime": "07:00",
-        "endTime": "21:30",
+        "endTime": "20:00",
         "areas": [],
         "objectTypes": {
             "car": 5,
