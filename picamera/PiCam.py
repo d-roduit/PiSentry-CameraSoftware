@@ -22,8 +22,10 @@ def from_h264_create_file(h264_recording_filepath: str, new_file_extension: str)
     recording_filepath_without_extension = h264_recording_filepath.removesuffix(h264_extension)
     new_filepath = recording_filepath_without_extension + new_file_extension
 
-    subprocess.run(['ffmpeg', '-framerate', '30', '-i', h264_recording_filepath, '-c', 'copy', f'{new_filepath}'],
-                   check=True, timeout=60)
+    subprocess.run([
+        'ffmpeg', '-framerate', '30', '-i', h264_recording_filepath, '-c', 'copy',
+        '-movflags', 'faststart', new_filepath
+    ], check=True, timeout=60)
 
 
 class PiCam:
