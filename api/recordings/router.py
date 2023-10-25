@@ -98,3 +98,10 @@ def start_recording():
     except:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail='Could not start recording')
 
+@router.post('/stop')
+def stop_recording():
+    try:
+        picam.stop_recording()
+        return Response(status_code=status.HTTP_200_OK)
+    except:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail='Could not stop recording')
