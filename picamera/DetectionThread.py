@@ -88,7 +88,7 @@ def write_recording_thumbnail_to_file(frame, filename, file_extension):
 
     os.makedirs(name=recordings_thumbnails_folderpath, exist_ok=True)
 
-    recording_thumbnail_filename = f'{filename}.{file_extension}'
+    recording_thumbnail_filename = f'{filename}{file_extension}'
     recording_thumbnail_filepath = os.path.join(recordings_thumbnails_folderpath, recording_thumbnail_filename)
 
     cv2.imwrite(recording_thumbnail_filepath, frame, [cv2.IMWRITE_WEBP_QUALITY, 50])
@@ -366,8 +366,8 @@ class DetectionThread(threading.Thread):
                 cv2.imshow('debug', frame)
 
     def save_recording_and_notify_user(self, frame, object_bounding_box, recording_datetime, recording_filename, object_to_notify_type):
-        recording_file_extension = 'mp4'
-        thumbnail_file_extension = 'webp'
+        recording_file_extension = '.mp4'
+        thumbnail_file_extension = '.webp'
         try:
             thumbnail_subframe = extract_square_thumbnail(frame, object_bounding_box)
             write_recording_thumbnail_to_file(thumbnail_subframe, recording_filename, thumbnail_file_extension)
@@ -387,8 +387,10 @@ class DetectionThread(threading.Thread):
                 backend_api_url + '/v1/recordings',
                 json={
                     'recorded_at': recording_datetime.isoformat(),
-                    'recording_filename': f'{recording_filename}.{recording_file_extension}',
-                    'thumbnail_filename': f'{recording_filename}.{thumbnail_file_extension}',
+                    'recording_filename': recording_filename,
+                    'recording_extension': recording_file_extension,
+                    'thumbnail_filename': recording_filename,
+                    'thumbnail_extension': thumbnail_file_extension,
                     'detected_object_type': object_to_notify_type,
                     'detection_session_id': detection_session_id,
                     'camera_id': configManager.config.camera.id,
@@ -405,18 +407,18 @@ class DetectionThread(threading.Thread):
         # Keep enough free space on disk to write a future recording
         self.ensure_free_space(
             free_space_to_ensure_mebibytes = 400,
-            filenames_to_keep = [f'{recording_filename}.{recording_file_extension}']
+            filenames_to_keep = [f'{recording_filename}{recording_file_extension}']
         )
 
     def ensure_free_space(self, free_space_to_ensure_mebibytes, filenames_to_keep):
         recordings_folder_path = configManager.config.detection.recordingsFolderPath
-        recording_file_extension = 'mp4'
-        thumbnail_file_extension = 'webp'
+        recording_file_extension = '.mp4'
+        thumbnail_file_extension = '.webp'
 
         filenames_in_dir = (
             filename
             for filename in os.listdir(recordings_folder_path)
-            if filename.endswith(f'.{recording_file_extension}')
+            if filename.endswith(recording_file_extension)
                and os.path.isfile(os.path.join(recordings_folder_path, filename))
                and filename not in filenames_to_keep
         )
@@ -433,7 +435,8 @@ class DetectionThread(threading.Thread):
         while current_free_space_mebibytes < free_space_to_ensure_mebibytes and len(sorted_recordings_filenames) > 0:
             # Create paths to files
             recording_filename = sorted_recordings_filenames.pop(0)
-            thumbnail_filename = f'{recording_filename.removesuffix(recording_file_extension)}{thumbnail_file_extension}'
+            recording_filename_without_extension = recording_filename.removesuffix(recording_file_extension)
+            thumbnail_filename = f'{recording_filename_without_extension}{thumbnail_file_extension}'
 
             recording_filepath = os.path.join(recordings_folder_path, recording_filename)
             thumbnail_filepath = os.path.join(recordings_folder_path, 'thumbnails', thumbnail_filename)
@@ -454,7 +457,7 @@ class DetectionThread(threading.Thread):
                     # Remove video file entry in database
                     delete_recording_response = self._http_session.delete(
                         backend_api_url + '/v1/recordings',
-                        json={'recording_filename': recording_filename},
+                        json={'recording_filename': recording_filename_without_extension},
                         timeout=5,
                     )
                     delete_recording_response.raise_for_status()
