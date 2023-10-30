@@ -91,7 +91,7 @@ def write_recording_thumbnail_to_file(frame, filename, file_extension):
     recording_thumbnail_filename = f'{filename}.{file_extension}'
     recording_thumbnail_filepath = os.path.join(recordings_thumbnails_folderpath, recording_thumbnail_filename)
 
-    cv2.imwrite(recording_thumbnail_filepath, frame)
+    cv2.imwrite(recording_thumbnail_filepath, frame, [cv2.IMWRITE_WEBP_QUALITY, 50])
 
 
 def extract_square_thumbnail(frame, object_bounding_box):
@@ -367,7 +367,7 @@ class DetectionThread(threading.Thread):
 
     def save_recording_and_notify_user(self, frame, object_bounding_box, recording_datetime, recording_filename, object_to_notify_type):
         recording_file_extension = 'mp4'
-        thumbnail_file_extension = 'jpg'
+        thumbnail_file_extension = 'webp'
         try:
             thumbnail_subframe = extract_square_thumbnail(frame, object_bounding_box)
             write_recording_thumbnail_to_file(thumbnail_subframe, recording_filename, thumbnail_file_extension)
@@ -411,7 +411,7 @@ class DetectionThread(threading.Thread):
     def ensure_free_space(self, free_space_to_ensure_mebibytes, filenames_to_keep):
         recordings_folder_path = configManager.config.detection.recordingsFolderPath
         recording_file_extension = 'mp4'
-        thumbnail_file_extension = 'jpg'
+        thumbnail_file_extension = 'webp'
 
         filenames_in_dir = (
             filename
