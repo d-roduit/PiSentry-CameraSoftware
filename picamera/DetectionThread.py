@@ -418,6 +418,7 @@ class DetectionThread(threading.Thread):
         recordings_folder_path = configManager.config.detection.recordingsFolderPath
         recording_file_extension = '.mp4'
         thumbnail_file_extension = '.webp'
+        thumbnail_formats = ('', '_square')
 
         filenames_in_dir = (
             filename
@@ -440,10 +441,8 @@ class DetectionThread(threading.Thread):
             # Create paths to files
             recording_filename = sorted_recordings_filenames.pop(0)
             recording_filename_without_extension = recording_filename.removesuffix(recording_file_extension)
-            thumbnail_filename = f'{recording_filename_without_extension}{thumbnail_file_extension}'
 
             recording_filepath = os.path.join(recordings_folder_path, recording_filename)
-            thumbnail_filepath = os.path.join(recordings_folder_path, 'thumbnails', thumbnail_filename)
 
             try:
                 # Remove video file from disk
@@ -468,12 +467,16 @@ class DetectionThread(threading.Thread):
                 except requests.exceptions.RequestException as e:
                     print('Request exception caught. Could not delete recording in database. Exception:', e)
 
-                # Remove thumbnail file from disk
-                thumbnail_size_mebibytes = bytes_to_mebibytes(os.path.getsize(thumbnail_filepath))
-                os.remove(thumbnail_filepath)
+                # Remove thumbnail files from disk
+                for thumbnail_format in thumbnail_formats:
+                    thumbnail_filename = f'{recording_filename_without_extension}{thumbnail_format}{thumbnail_file_extension}'
+                    thumbnail_filepath = os.path.join(recordings_folder_path, 'thumbnails', thumbnail_filename)
+                    thumbnail_size_mebibytes = bytes_to_mebibytes(os.path.getsize(thumbnail_filepath))
+                    os.remove(thumbnail_filepath)
 
-                # Update free space value
-                current_free_space_mebibytes += thumbnail_size_mebibytes
+                    # Update free space value
+                    current_free_space_mebibytes += thumbnail_size_mebibytes
+
             except Exception as e:
                 print('Exception caught while freeing space. Exception:', e)
 
