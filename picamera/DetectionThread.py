@@ -74,7 +74,7 @@ def get_object_with_highest_weight_and_area(all_detections, objects_to_detect_wi
 
     return output
 
-def write_recording_thumbnail_to_file(frame, filename, file_extension):
+def write_recording_thumbnail_to_file(frame, filename):
     if not os.path.isabs(configManager.config.detection.recordingsFolderPath):
         raise ValueError(
             'The recordings folder path must be an absolute path. Received:',
@@ -88,8 +88,7 @@ def write_recording_thumbnail_to_file(frame, filename, file_extension):
 
     os.makedirs(name=recordings_thumbnails_folderpath, exist_ok=True)
 
-    recording_thumbnail_filename = f'{filename}{file_extension}'
-    recording_thumbnail_filepath = os.path.join(recordings_thumbnails_folderpath, recording_thumbnail_filename)
+    recording_thumbnail_filepath = os.path.join(recordings_thumbnails_folderpath, filename)
 
     cv2.imwrite(recording_thumbnail_filepath, frame, [cv2.IMWRITE_WEBP_QUALITY, 50])
 
@@ -132,7 +131,6 @@ def extract_square_thumbnail(frame, object_bounding_box):
         top_left_y = frame_height - square_side_size
 
     return frame[top_left_y:bottom_right_y, top_left_x:bottom_right_x]
-
 
 def bytes_to_mebibytes(nb_bytes: int) -> float:
     nb_bytes_in_one_mebibyte = 1048576  # = 1024^2 OR 2^20
@@ -368,9 +366,15 @@ class DetectionThread(threading.Thread):
     def save_recording_and_notify_user(self, frame, object_bounding_box, recording_datetime, recording_filename, object_to_notify_type):
         recording_file_extension = '.mp4'
         thumbnail_file_extension = '.webp'
+        thumbnail_filename = recording_filename
+        square_thumbnail_filename = f'{recording_filename}_square'
+        
         try:
-            thumbnail_subframe = extract_square_thumbnail(frame, object_bounding_box)
-            write_recording_thumbnail_to_file(thumbnail_subframe, recording_filename, thumbnail_file_extension)
+            square_thumbnail_subframe = extract_square_thumbnail(frame, object_bounding_box)
+            resized_square_thumbnail_subframe = cv2.resize(square_thumbnail_subframe, dsize=(128, 128)) # make 128px x 128px image
+            resized_rectangle_thumbnail_frame = cv2.resize(frame, dsize=None, fx=0.5, fy=0.5) # divide resolution by 2
+            write_recording_thumbnail_to_file(resized_square_thumbnail_subframe, f'{square_thumbnail_filename}{thumbnail_file_extension}') # create square thumbnail
+            write_recording_thumbnail_to_file(resized_rectangle_thumbnail_frame, f'{thumbnail_filename}{thumbnail_file_extension}') # create rectangle thumbnail
         except Exception as e:
             print('Exception caught. Could not create recording thumbnail. Exception:', e)
 
