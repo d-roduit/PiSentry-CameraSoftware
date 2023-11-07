@@ -34,9 +34,10 @@ class PiCam:
         video_config = self._picam2.create_video_configuration(main={'format': 'RGB888', 'size': (1920, 1080)})
         self._picam2.configure(video_config)
 
-        # self._streamingOutput = FfmpegOutput('-f flv rtmp://mediaserver.pisentry.app/PiSentry/Spooky_Stream')
-        self._streamingOutput = FfmpegOutput('-f flv rtmp://192.168.1.211:1935/PiSentry/Spooky_Stream')
-        self._recordingOutput = CircularOutput(buffersize=300)  # 300 means 30 images * 10 seconds
+        camera_port = configManager.config.camera.port
+        # self._streamingOutput = FfmpegOutput(f'-f flv rtmp://mediaserver.pisentry.app/pisentry/{camera_port}')
+        self._streamingOutput = FfmpegOutput(f'-f flv rtmp://192.168.1.211:1935/pisentry/{camera_port}')
+        self._recordingOutput = CircularOutput(buffersize=300)  # 300 means 30 images/second * 10 seconds
         self._encoder = H264Encoder(repeat=True, iperiod=15)
 
         self._picam2.start_encoder(self._encoder)
