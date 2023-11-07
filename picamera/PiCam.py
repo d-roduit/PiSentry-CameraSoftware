@@ -52,7 +52,9 @@ class PiCam:
         self._detection_thread = None
 
     def start_streaming(self):
-        self._streamingOutput.start()
+        if not self._streamingOutput.recording:
+            self.stop_streaming()
+            self._streamingOutput.start()
 
     def stop_streaming(self):
         self._streamingOutput.stop()
