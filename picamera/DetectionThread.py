@@ -408,6 +408,31 @@ class DetectionThread(threading.Thread):
         if configManager.config.notification.enabled:
             print('SENDING NOTIFICATION OF DETECTION FOR OJBECT', object_to_notify_type)
 
+            notifications_api_endpoint = f'{backend_api_url}/v1/notifications'
+            thumbnails_api_endpoint = f'{backend_api_url}/v1/thumbnails'
+            camera_name = configManager.config.camera.name
+            camera_id = configManager.config.camera.id
+            user_token = configManager.config.user.token
+            square_thumbnail_file = f'{recording_filename}_square{thumbnail_file_extension}'
+
+            icon_url = f'{thumbnails_api_endpoint}/{camera_id}/{square_thumbnail_file}?access_token={user_token}'
+
+            try:
+                send_notifications_response = self._http_session.post(
+                    f'{notifications_api_endpoint}/send',
+                    json={
+                        'title': camera_name,
+                        'message': f'{object_to_notify_type.capitalize()} detected',
+                        'icon': icon_url,
+                        'timestamp': int(time.time() * 1000), # timestamp must be in milliseconds
+                        'topic': 'detection'
+                    },
+                    timeout=10
+                )
+                send_notifications_response.raise_for_status()
+            except requests.exceptions.RequestException as e:
+                print('Request exception caught. Could not send notification. Exception:', e)
+
         # Keep enough free space on disk to write a future recording
         self.ensure_free_space(
             free_space_to_ensure_mebibytes = 400,
