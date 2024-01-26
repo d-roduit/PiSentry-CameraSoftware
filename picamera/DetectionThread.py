@@ -419,13 +419,15 @@ class DetectionThread(threading.Thread):
 
             try:
                 send_notifications_response = self._http_session.post(
-                    f'{notifications_api_endpoint}/send',
+                    f'{notifications_api_endpoint}/{camera_id}/send',
                     json={
-                        'title': camera_name,
-                        'message': f'{object_to_notify_type.capitalize()} detected',
-                        'icon': icon_url,
-                        'timestamp': int(time.time() * 1000), # timestamp must be in milliseconds
-                        'topic': 'detection'
+                        'notification': {
+                            'title': camera_name,
+                            'message': f'{object_to_notify_type.capitalize()} detected',
+                            'icon': icon_url,
+                            'timestamp': int(time.time() * 1000), # timestamp must be in milliseconds
+                            'topic': 'detection',
+                        }
                     },
                     timeout=10
                 )
