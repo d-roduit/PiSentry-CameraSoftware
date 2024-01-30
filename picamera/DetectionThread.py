@@ -21,10 +21,12 @@ def time_in_range(time_to_check, start_time, end_time) -> bool:
     if not isinstance(time_to_check, datetime.time) or not isinstance(start_time, datetime.time) or not isinstance(end_time, datetime.time):
         raise ValueError('All function parameters must be of type `datetime.time`')
 
-    if start_time <= end_time:
-        return start_time <= time_to_check <= end_time
+    if start_time == end_time:
+        return True
+    elif start_time < end_time:
+        return start_time <= time_to_check < end_time
     else:
-        return start_time <= time_to_check or time_to_check <= end_time
+        return start_time <= time_to_check or time_to_check < end_time
 
 def draw_on_frame(frame, bounding_box, bounding_box_color=(0, 255, 0), object_type=None, confidence=None,
                   text_color=(0, 125, 0)) -> None:
