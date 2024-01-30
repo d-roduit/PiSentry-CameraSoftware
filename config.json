@@ -21,7 +21,7 @@
         },
         "recordingsFolderPath": "/home/droduit/Desktop/SambaShare"
     },
-    "notification": {
+    "notifications": {
         "enabled": true
     }
 }

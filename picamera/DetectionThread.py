@@ -411,7 +411,7 @@ class DetectionThread(threading.Thread):
             print('Request exception caught. Could not create detection session and recording. Exception:', e)
 
         # SEND NOTIFICATION OF DETECTION
-        if configManager.config.notification.enabled:
+        if configManager.config.notifications.enabled:
             print('SENDING NOTIFICATION OF DETECTION FOR OJBECT', object_to_notify_type)
 
             notifications_api_endpoint = f'{backend_api_url}/v1/notifications'
