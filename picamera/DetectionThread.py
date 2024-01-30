@@ -186,6 +186,8 @@ class DetectionThread(threading.Thread):
         try:
             self._detection_start_time = datetime.datetime.strptime(configManager.config.detection.startTime, '%H:%M').time()
             self._detection_end_time = datetime.datetime.strptime(configManager.config.detection.endTime, '%H:%M').time()
+            self._notifications_start_time = datetime.datetime.strptime(configManager.config.notifications.startTime,'%H:%M').time()
+            self._notifications_end_time = datetime.datetime.strptime(configManager.config.notifications.endTime,'%H:%M').time()
         except:
             raise ValueError('start time and end time strings must be formatted as follows: hours must have two digits and go from 00 to 23, minutes must have two digits and go from 00 to 59.') from None
 
@@ -411,7 +413,14 @@ class DetectionThread(threading.Thread):
             print('Request exception caught. Could not create detection session and recording. Exception:', e)
 
         # SEND NOTIFICATION OF DETECTION
-        if configManager.config.notifications.enabled:
+        notification_current_time = datetime.datetime.now().time()
+
+        must_notify_detection = (
+                configManager.config.notifications.enabled
+                and time_in_range(notification_current_time, self._notifications_start_time, self._notifications_end_time)
+        )
+
+        if must_notify_detection:
             print('SENDING NOTIFICATION OF DETECTION FOR OJBECT', object_to_notify_type)
 
             notifications_api_endpoint = f'{backend_api_url}/v1/notifications'
@@ -419,7 +428,7 @@ class DetectionThread(threading.Thread):
             camera_name = configManager.config.camera.name
             camera_id = configManager.config.camera.id
             user_token = configManager.config.user.token
-            square_thumbnail_file = f'{recording_filename}_square{thumbnail_file_extension}'
+            square_thumbnail_file = f'{square_thumbnail_filename}{thumbnail_file_extension}'
 
             icon_url = f'{thumbnails_api_endpoint}/{camera_id}/{square_thumbnail_file}?access_token={user_token}'
 
