@@ -329,12 +329,12 @@ class DetectionThread(threading.Thread):
             print('is_in_recording_phase:', is_in_recording_phase)
             print('is_in_checking_phase:', is_in_checking_phase)
 
-            must_notify_detection = (
+            must_start_recording = (
                     (not is_in_recording_phase and not is_in_checking_phase)
                     or (is_in_checking_phase and object_to_notify_type != previous_object_type_detected)
             )
 
-            if must_notify_detection:
+            if must_start_recording:
                 is_in_checking_phase = False
                 is_in_recording_phase = True
                 time_when_recording_phase_started = time.time()
