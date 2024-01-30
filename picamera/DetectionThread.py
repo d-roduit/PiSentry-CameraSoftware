@@ -369,16 +369,20 @@ class DetectionThread(threading.Thread):
         recording_file_extension = '.mp4'
         thumbnail_file_extension = '.webp'
         thumbnail_filename = recording_filename
-        square_thumbnail_filename = f'{recording_filename}_square'
-        
+        square_thumbnail_filename = f'{thumbnail_filename}_square'
+
         try:
             square_thumbnail_subframe = extract_square_thumbnail(frame, object_bounding_box)
             resized_square_thumbnail_subframe = cv2.resize(square_thumbnail_subframe, dsize=(128, 128)) # make 128px x 128px image
-            resized_rectangle_thumbnail_frame = cv2.resize(frame, dsize=None, fx=0.5, fy=0.5) # divide resolution by 2
             write_recording_thumbnail_to_file(resized_square_thumbnail_subframe, f'{square_thumbnail_filename}{thumbnail_file_extension}') # create square thumbnail
+        except Exception as e:
+            print('Exception caught. Could not create recording\'s square thumbnail. Exception:', e)
+
+        try:
+            resized_rectangle_thumbnail_frame = cv2.resize(frame, dsize=None, fx=0.5, fy=0.5) # divide resolution by 2
             write_recording_thumbnail_to_file(resized_rectangle_thumbnail_frame, f'{thumbnail_filename}{thumbnail_file_extension}') # create rectangle thumbnail
         except Exception as e:
-            print('Exception caught. Could not create recording thumbnail. Exception:', e)
+            print('Exception caught. Could not create recording\'s rectangle thumbnail. Exception:', e)
 
         try:
             create_detection_session_response = self._http_session.post(
