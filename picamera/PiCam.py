@@ -6,6 +6,7 @@ import subprocess
 import os
 from ConfigManager import configManager
 from picamera.ffmpegOutputWithExceptionHandling import FfmpegOutputWithExceptionHandling
+from urls import mediaserver_publish_livestream_url
 
 
 def from_h264_create_file(h264_recording_filepath: str, new_file_extension: str):
@@ -37,7 +38,7 @@ class PiCam:
 
         camera_port = configManager.config.camera.port
         # self._streamingOutput = FfmpegOutputWithExceptionHandling(f'-f flv rtmp://mediaserver.pisentry.app/pisentry/{camera_port}')
-        self._streamingOutput = FfmpegOutputWithExceptionHandling(f'-f flv rtmp://192.168.1.211:1935/pisentry/{camera_port}')
+        self._streamingOutput = FfmpegOutputWithExceptionHandling(f'-f flv {mediaserver_publish_livestream_url}/pisentry/{camera_port}')
         self._recordingOutput = CircularOutput(buffersize=300)  # 300 means 30 images/second * 10 seconds
         self._encoder = H264Encoder(repeat=True, iperiod=15)
 

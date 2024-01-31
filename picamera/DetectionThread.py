@@ -17,7 +17,12 @@ from picamera.helpers.utils_functions import (
     extract_square_thumbnail,
 )
 from ConfigManager import configManager
-from urls import backend_api_url
+from urls import (
+    notifications_api_endpoint,
+    thumbnails_api_endpoint,
+    recordings_api_endpoint,
+    detection_sessions_api_endpoint,
+)
 
 # DEBUG VARIABLES
 debug_display_video_window = False
@@ -286,16 +291,13 @@ class DetectionThread(threading.Thread):
             print('Exception caught. Could not create recording\'s rectangle thumbnail. Exception:', e)
 
         try:
-            create_detection_session_response = self._http_session.post(
-                backend_api_url + '/v1/detection-sessions',
-                timeout=5
-            )
+            create_detection_session_response = self._http_session.post(detection_sessions_api_endpoint, timeout=5)
             create_detection_session_response.raise_for_status()
             detection_session_response_json_data = create_detection_session_response.json()
             detection_session_id = detection_session_response_json_data['session_id']
 
             create_recording_response = self._http_session.post(
-                backend_api_url + '/v1/recordings',
+                recordings_api_endpoint,
                 json={
                     'recorded_at': recording_datetime.isoformat(),
                     'recording_filename': recording_filename,
@@ -322,8 +324,6 @@ class DetectionThread(threading.Thread):
         if must_notify_detection:
             print('SENDING NOTIFICATION OF DETECTION FOR OJBECT', object_to_notify_type)
 
-            notifications_api_endpoint = f'{backend_api_url}/v1/notifications'
-            thumbnails_api_endpoint = f'{backend_api_url}/v1/thumbnails'
             camera_name = configManager.config.camera.name
             camera_id = configManager.config.camera.id
             user_token = configManager.config.user.token
@@ -400,7 +400,7 @@ class DetectionThread(threading.Thread):
                 try:
                     # Remove video file entry in database
                     delete_recording_response = self._http_session.delete(
-                        backend_api_url + '/v1/recordings',
+                        recordings_api_endpoint,
                         json={'recording_filename': recording_filename_without_extension},
                         timeout=5,
                     )
