@@ -8,6 +8,7 @@ import requests
 from typing import Any
 from picamera.motionDetection import MotionDetector
 from picamera.objectDetection import ObjectDetector
+from picamera.helpers.DetectionActions import DetectionActions
 from picamera.helpers.utils_functions import (
     time_in_range,
     get_object_with_highest_weight_and_area,
@@ -223,9 +224,20 @@ class DetectionThread(threading.Thread):
             print('is_in_recording_phase:', is_in_recording_phase)
             print('is_in_checking_phase:', is_in_checking_phase)
 
+            # Check if we must start recording based on the user setting for this object type
+            must_start_recording_for_object_type = False
+            try:
+                detection_action_for_object_type = configManager.config.detection.objects[object_to_notify_type].action
+                must_start_recording_for_object_type = DetectionActions.must_record(detection_action_for_object_type)
+            except ValueError as e:
+                print(f'Could not check if we must start recording based on the user setting for object type "{object_to_notify_type}". Exception:', e)
+
             must_start_recording = (
-                    (not is_in_recording_phase and not is_in_checking_phase)
-                    or (is_in_checking_phase and object_to_notify_type != previous_object_type_detected)
+                    must_start_recording_for_object_type
+                    and (
+                        (not is_in_recording_phase and not is_in_checking_phase)
+                        or (is_in_checking_phase and object_to_notify_type != previous_object_type_detected)
+                    )
             )
 
             if must_start_recording:
@@ -318,9 +330,18 @@ class DetectionThread(threading.Thread):
         # SEND NOTIFICATION OF DETECTION
         notification_current_time = datetime.datetime.now().time()
 
+        # Check if a notification needs to be sent based on the user setting for this object type
+        must_send_notification_for_object_type = False
+        try:
+            detection_action_for_object_type = configManager.config.detection.objects[object_to_notify_type].action
+            must_send_notification_for_object_type = DetectionActions.must_send_notification(detection_action_for_object_type)
+        except ValueError as e:
+            print(f'Could not check if a notification needs to be sent based on the user setting for object type "{object_to_notify_type}". Exception:', e)
+
         must_notify_detection = (
-                configManager.config.notifications.enabled
-                and time_in_range(notification_current_time, self._notifications_start_time, self._notifications_end_time)
+            must_send_notification_for_object_type
+            and configManager.config.notifications.enabled
+            and time_in_range(notification_current_time, self._notifications_start_time, self._notifications_end_time)
         )
 
         if must_notify_detection:

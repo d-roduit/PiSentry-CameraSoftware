@@ -9,7 +9,7 @@ class DetectionActions:
     @staticmethod
     def must_record(action: str) -> bool:
         DetectionActions._validate_action(action)
-        return action == 'record' or action == 'record+notification'
+        return action in ('record', 'record+notification')
 
     @staticmethod
     def must_send_notification(action: str) -> bool:
