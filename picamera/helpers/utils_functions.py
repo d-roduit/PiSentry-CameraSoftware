@@ -47,8 +47,8 @@ def get_object_with_highest_weight_and_area(all_detections, objects_to_detect_wi
             object_to_check_type, _, object_to_check_bounding_box = object_to_check
             output_type, _, output_bounding_box = output
 
-            object_to_check_weight = objects_to_detect_with_weights.get(object_to_check_type)
-            output_weight = objects_to_detect_with_weights.get(output_type)
+            object_to_check_weight = objects_to_detect_with_weights[object_to_check_type].weight
+            output_weight = objects_to_detect_with_weights[output_type].weight
 
             if object_to_check_weight > output_weight:
                 output = object_to_check

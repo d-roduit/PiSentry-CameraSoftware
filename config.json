@@ -3,27 +3,9 @@
         "token": "mytoken"
     },
     "camera": {
-        "id": 1,
-        "port": 9090,
-        "name": "Home camera"
+        "id": 1
     },
     "detection": {
-        "startTime": "07:00",
-        "endTime": "20:00",
-        "areas": [],
-        "objectTypes": {
-            "car": 5,
-            "motorcycle": 4,
-            "bicycle": 3,
-            "person": 2,
-            "cat": 1,
-            "dog": 1
-        },
         "recordingsFolderPath": "/home/droduit/Desktop/SambaShare"
-    },
-    "notifications": {
-        "enabled": true,
-        "startTime": "00:00",
-        "endTime": "00:00"
     }
 }

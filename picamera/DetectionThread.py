@@ -69,7 +69,7 @@ class DetectionThread(threading.Thread):
         self._object_detector.configure_detection(
             confidence_threshold=0.65,
             non_maximum_suppression_threshold=0.1,
-            objects_to_detect=list(configManager.config.detection.objectTypes.keys()),
+            objects_to_detect=list(configManager.config.detection.objects.keys()),
             min_frames_for_detection=5
         )
 
@@ -200,8 +200,10 @@ class DetectionThread(threading.Thread):
                     if debug_draw_detection_boxes_on_video:
                         draw_on_frame(frame, object_bounding_box, (0, 125, 0), object_type, object_confidence)
 
-            object_to_notify = get_object_with_highest_weight_and_area(object_detection,
-                                                                       configManager.config.detection.objectTypes)
+            object_to_notify = get_object_with_highest_weight_and_area(
+                object_detection,
+                configManager.config.detection.objects
+            )
 
             print('object_with_highest_weight_and_area:', object_to_notify)
 
