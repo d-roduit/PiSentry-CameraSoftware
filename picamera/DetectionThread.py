@@ -5,7 +5,10 @@ import datetime
 import time
 import cv2
 import requests
+
 from typing import Any
+from Observable import Observable
+from Observer import Observer
 from picamera.motionDetection import MotionDetector
 from picamera.objectDetection import ObjectDetector
 from picamera.helpers.DetectionActions import DetectionActions
@@ -17,7 +20,7 @@ from picamera.helpers.utils_functions import (
     write_frame_to_file,
     extract_square_thumbnail,
 )
-from ConfigManager import configManager
+from ConfigManager import ConfigManager, configManager
 from urls import (
     notifications_api_endpoint,
     thumbnails_api_endpoint,
@@ -29,11 +32,14 @@ from urls import (
 debug_display_video_window = False
 debug_draw_detection_boxes_on_video = False
 
-class DetectionThread(threading.Thread):
+class DetectionThread(threading.Thread, Observer):
     def __init__(self, picam):
         threading.Thread.__init__(self)
         self._running = True
         self._picam = picam
+
+        configManager.add_observer(self)
+
         self._http_session = requests.Session()
         self._http_session.headers = { 'Authorization': configManager.config.user.token }
 
@@ -74,6 +80,9 @@ class DetectionThread(threading.Thread):
             min_frames_for_detection=5
         )
 
+        self._initialize_detection_and_notifications_times()
+
+    def _initialize_detection_and_notifications_times(self) -> None:
         try:
             self._detection_start_time = datetime.datetime.strptime(configManager.config.detection.startTime, '%H:%M').time()
             self._detection_end_time = datetime.datetime.strptime(configManager.config.detection.endTime, '%H:%M').time()
@@ -81,6 +90,10 @@ class DetectionThread(threading.Thread):
             self._notifications_end_time = datetime.datetime.strptime(configManager.config.notifications.endTime,'%H:%M').time()
         except:
             raise ValueError('start time and end time strings must be formatted as follows: hours must have two digits and go from 00 to 23, minutes must have two digits and go from 00 to 59.') from None
+
+    def update(self, observable: Observable) -> None:
+        if isinstance(observable, ConfigManager):
+            self._initialize_detection_and_notifications_times()
 
     def run(self):
         try:
@@ -446,5 +459,6 @@ class DetectionThread(threading.Thread):
 
 
     def stop(self):
+        configManager.remove_observer(self)
         self._http_session.close()
         self._running = False

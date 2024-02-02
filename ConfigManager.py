@@ -1,5 +1,7 @@
 import json
 import requests
+from Observable import Observable
+from Observer import Observer
 from urls import cameras_api_endpoint, detectable_objects_actions_api_endpoint, notifications_api_endpoint
 
 class Dict(dict):
@@ -9,11 +11,22 @@ class Dict(dict):
     __delattr__ = dict.__delitem__
 
 
-class ConfigManager:
+class ConfigManager(Observable):
     def __init__(self, filepath: str):
+        self._observers: list[Observer] = []
         self.filepath = filepath
         self.config = ConfigManager.read_file(filepath)
         self.load_config_from_db()
+
+    def add_observer(self, observer: Observer) -> None:
+        self._observers.append(observer)
+
+    def remove_observer(self, observer: Observer) -> None:
+        self._observers.remove(observer)
+
+    def _notify_observers(self) -> None:
+        for observer in self._observers:
+            observer.update(self)
 
     @staticmethod
     def __parse_dict(data: dict):
@@ -97,5 +110,7 @@ class ConfigManager:
                 in detectable_objects_actions_json_data
             }
             self.config.detection.objects = ConfigManager.__parse_json(detection_objects)
+
+        self._notify_observers()
 
 configManager = ConfigManager('config.json')
