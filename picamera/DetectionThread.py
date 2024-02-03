@@ -446,13 +446,16 @@ class DetectionThread(threading.Thread, Observer):
 
                 # Remove thumbnail files from disk
                 for thumbnail_format in thumbnail_formats:
-                    thumbnail_filename = f'{recording_filename_without_extension}{thumbnail_format}{thumbnail_file_extension}'
-                    thumbnail_filepath = os.path.join(recordings_folder_path, 'thumbnails', thumbnail_filename)
-                    thumbnail_size_mebibytes = bytes_to_mebibytes(os.path.getsize(thumbnail_filepath))
-                    os.remove(thumbnail_filepath)
+                    try:
+                        thumbnail_filename = f'{recording_filename_without_extension}{thumbnail_format}{thumbnail_file_extension}'
+                        thumbnail_filepath = os.path.join(recordings_folder_path, 'thumbnails', thumbnail_filename)
+                        thumbnail_size_mebibytes = bytes_to_mebibytes(os.path.getsize(thumbnail_filepath))
+                        os.remove(thumbnail_filepath)
 
-                    # Update free space value
-                    current_free_space_mebibytes += thumbnail_size_mebibytes
+                        # Update free space value
+                        current_free_space_mebibytes += thumbnail_size_mebibytes
+                    except OSError as e:
+                        print('Exception caught while trying to delete thumbnail. Exception:', e)
 
             except Exception as e:
                 print('Exception caught while freeing space. Exception:', e)
