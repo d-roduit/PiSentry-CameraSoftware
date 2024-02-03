@@ -82,6 +82,13 @@ class DetectionThread(threading.Thread, Observer):
 
         self._initialize_detection_and_notifications_times()
 
+        # List of recordings filenames which could not be deleted previously due to network errors
+        # or any other exception which could have happened.
+        # We hope to be able to empty this list by successfully deleting from database the filenames it contains
+        # the next time we have a network connection or that the backend API is reachable and that the
+        # `ensure_free_space()` method is called.
+        self._recordings_filenames_without_extension_awaiting_deletion = set()
+
     def _initialize_detection_and_notifications_times(self) -> None:
         try:
             self._detection_start_time = datetime.datetime.strptime(configManager.config.detection.startTime, '%H:%M').time()
@@ -414,6 +421,23 @@ class DetectionThread(threading.Thread, Observer):
 
         current_free_space_mebibytes = bytes_to_mebibytes(current_free_space)
 
+        # Try to delete from the database the recording filenames which could not be deleted previously,
+        # due to network errors or any other exception which could have happened.
+        for recording_filename_without_extension in self._recordings_filenames_without_extension_awaiting_deletion.copy():
+            try:
+                # Delete recording file entry in database
+                delete_recording_response = self._http_session.delete(
+                    recordings_api_endpoint,
+                    json={'recording_filename': recording_filename_without_extension},
+                    timeout=5,
+                )
+                delete_recording_response.raise_for_status()
+                self._recordings_filenames_without_extension_awaiting_deletion.remove(recording_filename_without_extension)
+            except requests.exceptions.RequestException as e:
+                print('Request exception caught. Could not delete recording in database. Exception:', e)
+            except KeyError as key_error:
+                print('Could not remove filename from list of recordings filenames awaiting to be deleted from database. Exception:', key_error)
+
         while current_free_space_mebibytes < free_space_to_ensure_mebibytes and len(sorted_recordings_filenames) > 0:
             # Create paths to files
             recording_filename = sorted_recordings_filenames.pop(0)
@@ -443,6 +467,8 @@ class DetectionThread(threading.Thread, Observer):
                     delete_recording_response.raise_for_status()
                 except requests.exceptions.RequestException as e:
                     print('Request exception caught. Could not delete recording in database. Exception:', e)
+                    self._recordings_filenames_without_extension_awaiting_deletion.add(recording_filename_without_extension)
+                    print('Recording filename added to list of recordings filenames to retry to delete.')
 
                 # Remove thumbnail files from disk
                 for thumbnail_format in thumbnail_formats:
