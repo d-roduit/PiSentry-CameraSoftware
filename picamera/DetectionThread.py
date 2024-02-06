@@ -82,6 +82,13 @@ class DetectionThread(threading.Thread, Observer):
 
         self._initialize_detection_and_notifications_times()
 
+        # List of recordings which could not be inserted previously due to network errors
+        # or any other exception which could have happened.
+        # We hope to be able to empty this list by successfully inserting in database the recordings it contains
+        # the next time we have a network connection or that the backend API is reachable and that the
+        # `save_recording_and_notify_user()`method is called.
+        self._recordings_awaiting_insertion_in_db = dict()
+
         # List of recordings filenames which could not be deleted previously due to network errors
         # or any other exception which could have happened.
         # We hope to be able to empty this list by successfully deleting from database the filenames it contains
@@ -346,6 +353,43 @@ class DetectionThread(threading.Thread, Observer):
             create_recording_response.raise_for_status()
         except requests.exceptions.RequestException as e:
             print('Request exception caught. Could not create detection session and recording. Exception:', e)
+            self._recordings_awaiting_insertion_in_db[recording_filename] = {
+                'recorded_at': recording_datetime.isoformat(),
+                'recording_filename': recording_filename,
+                'recording_extension': recording_file_extension,
+                'thumbnail_filename': recording_filename,
+                'thumbnail_extension': thumbnail_file_extension,
+                'detected_object_type': object_to_notify_type,
+                'camera_id': configManager.config.camera.id,
+            }
+            print('Recording added to list of recordings awaiting insertion.')
+
+        # Try to insert in database the recordings which could not be inserted previously
+        # due to network errors or any other exception which could have happened.
+        for recording_filename_awaiting_insertion, recording_data_awaiting_insertion  in self._recordings_awaiting_insertion_in_db.copy().items():
+            try:
+                create_detection_session_response = self._http_session.post(detection_sessions_api_endpoint, timeout=5)
+                create_detection_session_response.raise_for_status()
+                detection_session_response_json_data = create_detection_session_response.json()
+                detection_session_id = detection_session_response_json_data['session_id']
+
+                create_recording_response = self._http_session.post(
+                    recordings_api_endpoint,
+                    json={
+                        'recorded_at': recording_data_awaiting_insertion['recorded_at'],
+                        'recording_filename': recording_data_awaiting_insertion['recording_filename'],
+                        'recording_extension': recording_data_awaiting_insertion['recording_extension'],
+                        'thumbnail_filename': recording_data_awaiting_insertion['thumbnail_filename'],
+                        'thumbnail_extension': recording_data_awaiting_insertion['thumbnail_extension'],
+                        'detected_object_type': recording_data_awaiting_insertion['detected_object_type'],
+                        'detection_session_id': detection_session_id,
+                        'camera_id': recording_data_awaiting_insertion['camera_id'],
+                    },
+                    timeout=5)
+                create_recording_response.raise_for_status()
+                del self._recordings_awaiting_insertion_in_db[recording_filename_awaiting_insertion]
+            except requests.exceptions.RequestException as e:
+                print('Request exception caught. Could not create detection session and recording for awaiting recording. Exception:', e)
 
         # SEND NOTIFICATION OF DETECTION
         notification_current_time = datetime.datetime.now().time()
