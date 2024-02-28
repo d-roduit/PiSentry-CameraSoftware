@@ -1,0 +1,11 @@
+{
+    "user": {
+        "token": "mytoken"
+    },
+    "camera": {
+        "id": 1
+    },
+    "detection": {
+        "recordingsFolderPath": "/home/droduit/Desktop/SambaShare"
+    }
+}
