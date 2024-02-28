@@ -1,5 +1,7 @@
-backend_api_url = 'http://192.168.1.211:7070'
-mediaserver_publish_livestream_url = 'rtmp://192.168.1.211:1935'
+#backend_api_url = 'http://192.168.1.211:7070'
+backend_api_url = 'https://api.pisentry.app'
+#mediaserver_publish_livestream_url = 'rtmp://192.168.1.211:1935'
+mediaserver_publish_livestream_url = 'rtmp://mediaserver.pisentry.app'
 
 cameras_api_endpoint = f'{backend_api_url}/v1/cameras'
 notifications_api_endpoint = f'{backend_api_url}/v1/notifications'
