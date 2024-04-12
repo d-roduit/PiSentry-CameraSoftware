@@ -3,3 +3,4 @@ numpy==1.19.5
 opencv-python==4.9.0.80
 requests==2.25.1
 uvicorn==0.20.0
+websockets==12.0
