@@ -22,8 +22,11 @@ It is important to set your own values for the existing settings for the project
 #### 4. Run the software
 
 1. If you are using a virtual environment, activate it by executing `source /<path_to_your_venv>/bin/activate`.
-2. If not already done, install the necessary dependencies with `python install -r requirements.txt`.
-3. Then, go to the root of the project and run the main file: `python main.py` and voilà !
+2. If not already done, install the necessary dependencies with `pip install -r requirements.txt`.
+<br>Picamera2 is not listed in the `requirements.txt` file as it is managed via `apt` and should already be installed as it comes pre-installed in all Raspberry Pi OS images as of mid-September 2022.
+<br>This project uses Picamera2 `v0.3.12`. If you need to update your package, you can do it with `sudo apt install -y python3-picamera2`.
+<br>If you encounter a system without Picamera2 pre-installed, please see the installation process in the [Picamera2 manual](https://datasheets.raspberrypi.com/camera/picamera2-manual.pdf).  
+4. Then, go to the root of the project and run the main file: `python main.py` and voilà !
 
 ## <a name="technologies"></a>Technologies
 
