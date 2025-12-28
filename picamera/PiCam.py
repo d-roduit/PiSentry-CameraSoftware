@@ -1,11 +1,10 @@
 from picamera2 import Picamera2
 from picamera2.encoders import H264Encoder
-from picamera2.outputs import CircularOutput
+from picamera2.outputs import CircularOutput, FfmpegOutput
 from picamera.DetectionThread import DetectionThread
 import subprocess
 import os
 from ConfigManager import configManager
-from picamera.ffmpegOutputWithExceptionHandling import FfmpegOutputWithExceptionHandling
 from urls import mediaserver_publish_livestream_url
 
 
@@ -37,8 +36,8 @@ class PiCam:
         self._picam2.configure(video_config)
 
         camera_port = configManager.config.camera.port
-        # self._streamingOutput = FfmpegOutputWithExceptionHandling(f'-f flv rtmp://mediaserver.pisentry.app/pisentry/{camera_port}')
-        self._streamingOutput = FfmpegOutputWithExceptionHandling(f'-f flv {mediaserver_publish_livestream_url}/pisentry/{camera_port}')
+        # self._streamingOutput = FfmpegOutput(f'-f flv rtmp://mediaserver.pisentry.app/pisentry/{camera_port}')
+        self._streamingOutput = FfmpegOutput(f'-f flv {mediaserver_publish_livestream_url}/pisentry/{camera_port}')
         self._recordingOutput = CircularOutput(buffersize=300)  # 300 means 30 images/second * 10 seconds
         self._encoder = H264Encoder(repeat=True, iperiod=15)
 
