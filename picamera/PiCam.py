@@ -38,6 +38,7 @@ class PiCam:
         camera_port = configManager.config.camera.port
         # self._streamingOutput = FfmpegOutput(f'-f flv rtmp://mediaserver.pisentry.app/pisentry/{camera_port}')
         self._streamingOutput = FfmpegOutput(f'-f flv {mediaserver_publish_livestream_url}/pisentry/{camera_port}')
+        self._streamingOutput.error_callback = self.handle_ffmpeg_streaming_brokenpipe_exception
         self._recordingOutput = CircularOutput(buffersize=300)  # 300 means 30 images/second * 10 seconds
         self._encoder = H264Encoder(repeat=True, iperiod=15)
 
@@ -50,6 +51,13 @@ class PiCam:
         self._h264_recording_filepath = ''
 
         self._detection_thread = None
+
+    def handle_ffmpeg_streaming_brokenpipe_exception(self, exception):
+        # We call the `.stop()` method of the streaming output to make sure to benefit from future
+        # improvements and changes in the upstream, meaning official picamera2, code of the `FfmpegOutput` class.
+        # But in reality, we only need to set `self._streamingOutput.recording = False` to fix the brokenpipe exception
+        # preventing to restart streaming. That's actually what the `.stop()` method of the `Output` base class does.
+        self._streamingOutput.stop()
 
     def start_streaming(self):
         if not self._streamingOutput.recording:
